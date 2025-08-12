@@ -85,6 +85,17 @@
               "src/styles.css"
             ]
           }
+        },
+        "e2e": {
+          "builder": "playwright-ng-schematics:playwright",
+          "options": {
+            "devServerTarget": "timelock:serve"
+          },
+          "configurations": {
+            "production": {
+              "devServerTarget": "timelock:serve:production"
+            }
+          }
         }
       }
     }
