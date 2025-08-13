@@ -1,12 +1,74 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TodoService } from './services/todo.service';
+import { TodoFormComponent } from './components/todo-form/todo-form.component';
+import { TodoItemComponent } from './components/todo-item/todo-item.component';
+import { TodoFiltersComponent } from './components/todo-filters/todo-filters.component';
+import { Todo, FilterType, SortType } from './models/todo.model';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  standalone: true,
+  imports: [
+    CommonModule,
+    TodoFormComponent,
+    TodoItemComponent,
+    TodoFiltersComponent
+  ],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
 export class App {
-  protected readonly title = signal('timelock');
+  private todoService = inject(TodoService);
+
+  // Expose service signals to template
+  todos = this.todoService.filteredTodos;
+  filter = this.todoService.filter;
+  sort = this.todoService.sort;
+  search = this.todoService.search;
+  stats = this.todoService.stats;
+
+  onAddTodo(todoData: Omit<Todo, 'id' | 'createdAt' | 'updatedAt' | 'subtasks' | 'order'>): void {
+    this.todoService.addTodo(todoData);
+  }
+
+  onAddSubtask(data: { parentId: string; subtaskData: Partial<Todo> }): void {
+    this.todoService.addSubtask(data.parentId, data.subtaskData);
+  }
+
+  onToggleExpanded(id: string): void {
+    this.todoService.toggleExpanded(id);
+  }
+
+  onToggleTodo(id: string): void {
+    this.todoService.toggleTodo(id);
+  }
+
+  onUpdateTodo(data: { id: string; updates: Partial<Todo> }): void {
+    this.todoService.updateTodo(data.id, data.updates);
+  }
+
+  onDeleteTodo(id: string): void {
+    this.todoService.deleteTodo(id);
+  }
+
+  onFilterChange(filter: FilterType): void {
+    this.todoService.setFilter(filter);
+  }
+
+  onSortChange(sort: SortType): void {
+    this.todoService.setSort(sort);
+  }
+
+  onSearchChange(search: string): void {
+    this.todoService.setSearch(search);
+  }
+
+  onClearCompleted(): void {
+    this.todoService.clearCompleted();
+  }
+
+  trackByTodoId(index: number, todo: Todo): string {
+    return todo.id;
+  }
 }

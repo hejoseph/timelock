@@ -1,0 +1,275 @@
+.task-item {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin-bottom: 1px;
+  transition: all 0.2s ease;
+}
+
+.task-item:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  gap: 8px;
+  min-height: 40px;
+  position: relative;
+}
+
+.task-row.completed {
+  opacity: 0.6;
+}
+
+.task-row.high-priority {
+  border-left: 3px solid #ef4444;
+}
+
+.task-row.medium-priority {
+  border-left: 3px solid #f59e0b;
+}
+
+.task-row.low-priority {
+  border-left: 3px solid #10b981;
+}
+
+.task-row.overdue {
+  background: #fef2f2;
+  border-left: 3px solid #dc2626;
+}
+
+/* Expand/Collapse Button */
+.expand-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.expand-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.expand-btn.expanded {
+  transform: rotate(90deg);
+}
+
+.expand-placeholder {
+  width: 20px;
+  height: 20px;
+}
+
+/* Checkbox */
+.task-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+  margin: 0;
+}
+
+/* Task Content */
+.task-content {
+  flex: 1;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.task-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.task-title.completed {
+  text-decoration: line-through;
+  color: #6b7280;
+}
+
+.task-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.due-date {
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.due-date.overdue {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.category {
+  color: #3b82f6;
+  background: #eff6ff;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Priority Indicator */
+.priority-indicator {
+  width: 4px;
+  height: 20px;
+  border-radius: 2px;
+  margin-left: auto;
+}
+
+.priority-indicator[data-priority="high"] {
+  background: #ef4444;
+}
+
+.priority-indicator[data-priority="medium"] {
+  background: #f59e0b;
+}
+
+.priority-indicator[data-priority="low"] {
+  background: #10b981;
+}
+
+/* Task Actions */
+.task-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.task-row:hover .task-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.action-btn.delete-btn:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* Add Subtask */
+.add-subtask {
+  padding: 0 12px 8px 44px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.add-subtask-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.add-subtask-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* Subtasks */
+.subtasks {
+  border-top: 1px solid #f3f4f6;
+  padding-left: 32px;
+  background: #fafbfc;
+}
+
+.subtasks .task-item {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.subtasks .task-item:last-child {
+  border-bottom: none;
+}
+
+.subtasks .task-row {
+  padding: 6px 12px;
+  min-height: 36px;
+}
+
+.subtasks .task-title {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.subtasks .add-subtask {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .task-row {
+    padding: 10px;
+  }
+  
+  .task-actions {
+    opacity: 1;
+  }
+  
+  .action-btn {
+    padding: 8px;
+  }
+  
+  .add-subtask {
+    padding: 0 10px 8px 42px;
+  }
+  
+  .subtasks {
+    padding-left: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .task-meta {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .due-date,
+  .category {
+    font-size: 11px;
+  }
+}
