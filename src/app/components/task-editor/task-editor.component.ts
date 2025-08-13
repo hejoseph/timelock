@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Todo } from '../../models/todo.model';
@@ -96,7 +96,7 @@ import { Todo } from '../../models/todo.model';
   `,
   styleUrls: ['./task-editor.component.css']
 })
-export class TaskEditorComponent implements OnInit {
+export class TaskEditorComponent implements OnChanges {
   @Input() todo: Todo | null = null;
   @Input() isSubtask = false;
   @Output() save = new EventEmitter<Partial<Todo>>();
@@ -117,17 +117,22 @@ export class TaskEditorComponent implements OnInit {
     completed: false
   };
 
-  ngOnInit() {
-    this.isEditing = !!this.todo;
-    if (this.todo) {
-      this.formData = {
-        title: this.todo.title,
-        description: this.todo.description || '',
-        priority: this.todo.priority,
-        dueDate: this.todo.dueDate ? this.formatDateForInput(this.todo.dueDate) : '',
-        category: this.todo.category || '',
-        completed: this.todo.completed
-      };
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['todo'] && changes['todo'].currentValue) {
+      this.isEditing = true;
+      if (this.todo) {
+        this.formData = {
+          title: this.todo.title,
+          description: this.todo.description || '',
+          priority: this.todo.priority,
+          dueDate: this.todo.dueDate ? this.formatDateForInput(this.todo.dueDate) : '',
+          category: this.todo.category || '',
+          completed: this.todo.completed
+        };
+      }
+    } else {
+      this.isEditing = false;
+      this.resetForm();
     }
   }
 
