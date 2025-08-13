@@ -1,11 +1,12 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { Todo, FilterType, SortType } from '../models/todo.model';
+import { IndexedDBService } from './indexeddb.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TodoService {
-  private readonly STORAGE_KEY = 'awesome-todos';
+  private indexedDBService = inject(IndexedDBService);
   
   // Signals for reactive state management
   private todosSignal = signal<Todo[]>([]);
@@ -107,7 +108,50 @@ export class TodoService {
   }
 
   constructor() {
-    this.loadTodos();
+    this.initializeData();
+  }
+
+  private async initializeData(): Promise<void> {
+    try {
+      // First, try to migrate data from localStorage if it exists
+      await this.migrateFromLocalStorage();
+      
+      // Then load data from IndexedDB
+      await this.loadTodos();
+    } catch (error) {
+      console.error('Error initializing data:', error);
+    }
+  }
+
+  private async migrateFromLocalStorage(): Promise<void> {
+    const LEGACY_STORAGE_KEY = 'awesome-todos';
+    const stored = localStorage.getItem(LEGACY_STORAGE_KEY);
+    
+    if (stored) {
+      try {
+        const todos = JSON.parse(stored).map((todo: any) => ({
+          ...todo,
+          createdAt: new Date(todo.createdAt),
+          updatedAt: new Date(todo.updatedAt),
+          dueDate: todo.dueDate ? new Date(todo.dueDate) : undefined,
+          subtasks: todo.subtasks || [],
+          isExpanded: todo.isExpanded ?? false,
+          order: todo.order || 0
+        }));
+
+        // Check if IndexedDB is empty before migrating
+        const existingTodos = await this.indexedDBService.loadTodos();
+        if (existingTodos.length === 0) {
+          await this.indexedDBService.saveTodos(todos);
+          console.log('Migrated', todos.length, 'todos from localStorage to IndexedDB');
+        }
+        
+        // Remove from localStorage after successful migration
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      } catch (error) {
+        console.error('Error migrating from localStorage:', error);
+      }
+    }
   }
 
   addTodo(todoData: Omit<Todo, 'id' | 'createdAt' | 'updatedAt' | 'subtasks' | 'order'>): void {
@@ -316,27 +360,20 @@ export class TodoService {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 
-  private saveTodos(): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.todosSignal()));
+  private async saveTodos(): Promise<void> {
+    try {
+      await this.indexedDBService.saveTodos(this.todosSignal());
+    } catch (error) {
+      console.error('Error saving todos to IndexedDB:', error);
+    }
   }
 
-  private loadTodos(): void {
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    if (stored) {
-      try {
-        const todos = JSON.parse(stored).map((todo: any) => ({
-          ...todo,
-          createdAt: new Date(todo.createdAt),
-          updatedAt: new Date(todo.updatedAt),
-          dueDate: todo.dueDate ? new Date(todo.dueDate) : undefined,
-          subtasks: todo.subtasks || [],
-          isExpanded: todo.isExpanded ?? false,
-          order: todo.order || 0
-        }));
-        this.todosSignal.set(todos);
-      } catch (error) {
-        console.error('Error loading todos from localStorage:', error);
-      }
+  private async loadTodos(): Promise<void> {
+    try {
+      const todos = await this.indexedDBService.loadTodos();
+      this.todosSignal.set(todos);
+    } catch (error) {
+      console.error('Error loading todos from IndexedDB:', error);
     }
   }
 }
