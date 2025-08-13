@@ -9,6 +9,7 @@ export interface Todo {
   updatedAt: Date;
   category?: string;
   parentId?: string;
+  projectId?: string;
   subtasks: Todo[];
   isExpanded: boolean;
   order: number;
