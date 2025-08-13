@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TodoService } from './services/todo.service';
 import { TodoFormComponent } from './components/todo-form/todo-form.component';
@@ -21,6 +21,8 @@ import { Todo, FilterType, SortType } from './models/todo.model';
 export class App {
   private todoService = inject(TodoService);
 
+  @ViewChild('todoForm') todoFormComponent!: TodoFormComponent;
+
   // Expose service signals to template
   todos = this.todoService.filteredTodos;
   filter = this.todoService.filter;
@@ -30,6 +32,18 @@ export class App {
 
   onAddTodo(todoData: Omit<Todo, 'id' | 'createdAt' | 'updatedAt' | 'subtasks' | 'order'>): void {
     this.todoService.addTodo(todoData);
+  }
+
+  onShowAddTaskForm(): void {
+    // Scroll to top and trigger the add todo form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Open the todo form if it's not already open
+    setTimeout(() => {
+      if (this.todoFormComponent && !this.todoFormComponent.showForm()) {
+        this.todoFormComponent.toggleForm();
+      }
+    }, 300); // Small delay to allow scroll to complete
   }
 
   onAddSubtask(data: { parentId: string; subtaskData: Partial<Todo> }): void {

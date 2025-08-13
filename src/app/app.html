@@ -12,7 +12,7 @@
   <main class="app-main">
     <div class="todo-container">
       <!-- Add Todo Form -->
-      <app-todo-form (addTodo)="onAddTodo($event)"></app-todo-form>
+      <app-todo-form #todoForm (addTodo)="onAddTodo($event)"></app-todo-form>
 
       <!-- Filters and Stats -->
       <app-todo-filters
@@ -38,6 +38,16 @@
             (addSubtaskEvent)="onAddSubtask($event)"
             (toggleExpanded)="onToggleExpanded($event)">
           </app-todo-item>
+          
+          <!-- Add Task Button at bottom of list -->
+          <div class="add-task-bottom">
+            <button class="add-task-bottom-btn" (click)="onShowAddTaskForm()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 1a.75.75 0 01.75.75v5.5h5.5a.75.75 0 010 1.5h-5.5v5.5a.75.75 0 01-1.5 0v-5.5h-5.5a.75.75 0 010-1.5h5.5v-5.5A.75.75 0 018 1z"/>
+              </svg>
+              Add Task
+            </button>
+          </div>
         </div>
 
         <ng-template #emptyState>
