@@ -196,25 +196,15 @@ export class TodoService {
   }
 
   toggleTodo(id: string): void {
-    this.updateTodo(id, { completed: undefined }); // Will be handled by updateTodo
-    this.todosSignal.update(todos =>
-      todos.map(todo => {
-        if (todo.id === id) {
-          return { ...todo, completed: !todo.completed, updatedAt: new Date() };
-        }
-        // Check subtasks
-        const updatedSubtasks = todo.subtasks.map(subtask =>
-          subtask.id === id
-            ? { ...subtask, completed: !subtask.completed, updatedAt: new Date() }
-            : subtask
-        );
-        if (updatedSubtasks !== todo.subtasks) {
-          return { ...todo, subtasks: updatedSubtasks, updatedAt: new Date() };
-        }
-        return todo;
-      })
-    );
-    this.saveTodos();
+    const todos = this.todosSignal();
+    const todoToToggle = this.findTodoById(todos, id);
+
+    if (todoToToggle) {
+      const newCompletedState = !todoToToggle.completed;
+      const updatedTodos = this.updateTodoRecursive(todos, id, { completed: newCompletedState });
+      this.todosSignal.set(updatedTodos);
+      this.saveTodos();
+    }
   }
 
   toggleExpanded(id: string): void {
@@ -264,6 +254,36 @@ export class TodoService {
   clearCompleted(): void {
     this.todosSignal.update(todos => todos.filter(todo => !todo.completed));
     this.saveTodos();
+  }
+
+  private updateTodoRecursive(todos: Todo[], id: string, updates: Partial<Todo>): Todo[] {
+    return todos.map(todo => {
+      if (todo.id === id) {
+        return { ...todo, ...updates, updatedAt: new Date() };
+      }
+      if (todo.subtasks.length > 0) {
+        const updatedSubtasks = this.updateTodoRecursive(todo.subtasks, id, updates);
+        if (updatedSubtasks !== todo.subtasks) {
+          return { ...todo, subtasks: updatedSubtasks, updatedAt: new Date() };
+        }
+      }
+      return todo;
+    });
+  }
+
+  private findTodoById(todos: Todo[], id: string): Todo | undefined {
+    for (const todo of todos) {
+      if (todo.id === id) {
+        return todo;
+      }
+      if (todo.subtasks.length > 0) {
+        const foundInSubtasks = this.findTodoById(todo.subtasks, id);
+        if (foundInSubtasks) {
+          return foundInSubtasks;
+        }
+      }
+    }
+    return undefined;
   }
 
   private generateId(): string {
