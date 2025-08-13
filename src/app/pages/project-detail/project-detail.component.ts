@@ -6,6 +6,7 @@ import { TodoService } from '../../services/todo.service';
 import { TodoFormComponent } from '../../components/todo-form/todo-form.component';
 import { TodoItemComponent } from '../../components/todo-item/todo-item.component';
 import { TodoFiltersComponent } from '../../components/todo-filters/todo-filters.component';
+import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Todo, FilterType, SortType } from '../../models/todo.model';
 
 @Component({
@@ -16,7 +17,8 @@ import { Todo, FilterType, SortType } from '../../models/todo.model';
     RouterModule, 
     TodoFormComponent, 
     TodoItemComponent, 
-    TodoFiltersComponent
+    TodoFiltersComponent,
+    DragDropModule
   ],
   template: `
     <div class="project-detail-container" *ngIf="project(); else notFound">
@@ -76,15 +78,17 @@ import { Todo, FilterType, SortType } from '../../models/todo.model';
 
         <!-- Todo List -->
         <div class="todos-section">
-          <div class="todos-list" *ngIf="filteredTodos().length > 0; else emptyState">
+          <div class="todos-list" cdkDropList [cdkDropListData]="filteredTodos()" (cdkDropListDropped)="onDrop($event)" *ngIf="filteredTodos().length > 0; else emptyState">
             <app-todo-item
               *ngFor="let todo of filteredTodos(); trackBy: trackByTodoId"
+              cdkDrag
               [todo]="todo"
               (toggle)="onToggleTodo($event)"
               (update)="onUpdateTodo($event)"
               (delete)="onDeleteTodo($event)"
               (addSubtaskEvent)="onAddSubtask($event)"
-              (toggleExpanded)="onToggleExpanded($event)">
+              (toggleExpanded)="onToggleExpanded($event)"
+              (subtaskDrop)="onSubtaskDrop($event.event, $event.parentId)">
             </app-todo-item>
             
             <!-- Add Task Button at bottom of list -->
@@ -334,5 +338,27 @@ export class ProjectDetailComponent implements OnInit {
       }
     }
     return result;
+  }
+
+  onDrop(event: CdkDragDrop<Todo[]>) {
+    const todos = this.filteredTodos();
+    const movedTodo = todos[event.previousIndex];
+    const targetTodo = todos[event.currentIndex];
+
+    let allTodos = [...this.projectTodos()];
+    const fromIndex = allTodos.findIndex(t => t.id === movedTodo.id);
+    const toIndex = allTodos.findIndex(t => t.id === targetTodo.id);
+
+    moveItemInArray(allTodos, fromIndex, toIndex);
+    this.todoService.reorderTodos(allTodos.map(t => t.id));
+  }
+
+  onSubtaskDrop(event: CdkDragDrop<Todo[]>, parentId: string) {
+    const parentTodo = this.todoService.todos().find(t => t.id === parentId);
+    if (parentTodo) {
+      let subtasks = [...parentTodo.subtasks];
+      moveItemInArray(subtasks, event.previousIndex, event.currentIndex);
+      this.todoService.reorderSubtasks(parentId, subtasks.map(s => s.id));
+    }
   }
 }

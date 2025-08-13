@@ -287,25 +287,35 @@ export class TodoService {
     });
   }
 
-  reorderTodos(fromIndex: number, toIndex: number): void {
-    const filteredTodos = this.filteredTodos();
-    const allTodos = this.todosSignal();
-    
-    // Get the todo being moved
-    const movedTodo = filteredTodos[fromIndex];
-    
-    // Remove the moved todo from filtered list
-    const newFilteredTodos = [...filteredTodos];
-    newFilteredTodos.splice(fromIndex, 1);
-    newFilteredTodos.splice(toIndex, 0, movedTodo);
-    
-    // Update the full todos list maintaining the new order for filtered items
-    const updatedTodos = allTodos.map(todo => {
-      const filteredIndex = newFilteredTodos.findIndex(ft => ft.id === todo.id);
-      return filteredIndex >= 0 ? newFilteredTodos[filteredIndex] : todo;
+  reorderTodos(todoIds: string[]): void {
+    this.todosSignal.update(todos => {
+      const todoMap = new Map(todos.map(t => [t.id, t]));
+      const reorderedTodos = todoIds.map((id, index) => {
+        const todo = todoMap.get(id)!;
+        return { ...todo, order: index };
+      });
+
+      const reorderedIds = new Set(reorderedTodos.map(t => t.id));
+      const remainingTodos = todos.filter(t => !reorderedIds.has(t.id));
+
+      return [...reorderedTodos, ...remainingTodos];
     });
-    
-    this.todosSignal.set(updatedTodos);
+    this.saveTodos();
+  }
+
+  reorderSubtasks(parentId: string, subtaskIds: string[]): void {
+    this.todosSignal.update(todos => {
+      const parent = this.findTodoById(todos, parentId);
+      if (!parent) return todos;
+
+      const subtaskMap = new Map(parent.subtasks.map(s => [s.id, s]));
+      parent.subtasks = subtaskIds.map((id, index) => {
+        const subtask = subtaskMap.get(id)!;
+        return { ...subtask, order: index };
+      });
+
+      return [...todos];
+    });
     this.saveTodos();
   }
 

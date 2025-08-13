@@ -2,12 +2,13 @@ import { Component, Input, Output, EventEmitter, signal, ViewChild } from '@angu
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Todo } from '../../models/todo.model';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { TaskEditorComponent } from '../task-editor/task-editor.component';
 
 @Component({
   selector: 'app-todo-item',
   standalone: true,
-  imports: [CommonModule, FormsModule, TaskEditorComponent],
+  imports: [CommonModule, FormsModule, TaskEditorComponent, DragDropModule],
   template: `
     <div class="task-item" [class.has-subtasks]="todo.subtasks.length > 0">
       <!-- Main Task -->
@@ -77,9 +78,10 @@ import { TaskEditorComponent } from '../task-editor/task-editor.component';
       </div>
 
       <!-- Subtasks -->
-      <div class="subtasks" *ngIf="todo.isExpanded && todo.subtasks.length > 0">
+      <div class="subtasks" cdkDropList [cdkDropListData]="todo.subtasks" (cdkDropListDropped)="onSubtaskDrop($event)" *ngIf="todo.isExpanded && todo.subtasks.length > 0">
         <app-todo-item
           *ngFor="let subtask of todo.subtasks; trackBy: trackBySubtaskId"
+          cdkDrag
           [todo]="subtask"
           [isSubtask]="true"
           (toggle)="onSubtaskToggle($event)"
@@ -110,6 +112,7 @@ export class TodoItemComponent {
   @Output() update = new EventEmitter<{ id: string; updates: Partial<Todo> }>();
   @Output() addSubtaskEvent = new EventEmitter<{ parentId: string; subtaskData: Partial<Todo> }>();
   @Output() toggleExpanded = new EventEmitter<string>();
+  @Output() subtaskDrop = new EventEmitter<{ parentId: string; event: CdkDragDrop<Todo[]> }>();
 
   @ViewChild('taskEditor') taskEditor!: TaskEditorComponent;
 
@@ -176,6 +179,10 @@ export class TodoItemComponent {
 
   onSubtaskToggleExpanded(subtaskId: string): void {
     this.toggleExpanded.emit(subtaskId);
+  }
+
+  onSubtaskDrop(event: CdkDragDrop<Todo[]>) {
+    this.subtaskDrop.emit({ parentId: this.todo.id, event });
   }
 
   trackBySubtaskId(index: number, subtask: Todo): string {
