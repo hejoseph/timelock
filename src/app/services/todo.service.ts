@@ -130,7 +130,7 @@ export class TodoService {
 
   addSubtask(parentId: string, subtaskData: Partial<Todo>): void {
     const todos = this.todosSignal();
-    const parent = todos.find(t => t.id === parentId);
+    const parent = this.findTodoById(todos, parentId);
     if (!parent) return;
 
     const maxOrder = Math.max(0, ...parent.subtasks.map(s => s.order || 0));
@@ -151,14 +151,29 @@ export class TodoService {
       order: maxOrder + 1
     };
 
-    this.todosSignal.update(todos =>
-      todos.map(todo =>
-        todo.id === parentId
-          ? { ...todo, subtasks: [...todo.subtasks, newSubtask], updatedAt: new Date() }
-          : todo
-      )
-    );
+    const updatedTodos = this.addSubtaskRecursive(todos, parentId, newSubtask);
+    this.todosSignal.set(updatedTodos);
     this.saveTodos();
+  }
+
+  private addSubtaskRecursive(todos: Todo[], parentId: string, newSubtask: Todo): Todo[] {
+    return todos.map(todo => {
+      if (todo.id === parentId) {
+        return { 
+          ...todo, 
+          subtasks: [...todo.subtasks, newSubtask], 
+          updatedAt: new Date(),
+          isExpanded: true // Auto-expand when adding subtask
+        };
+      }
+      if (todo.subtasks.length > 0) {
+        const updatedSubtasks = this.addSubtaskRecursive(todo.subtasks, parentId, newSubtask);
+        if (updatedSubtasks !== todo.subtasks) {
+          return { ...todo, subtasks: updatedSubtasks, updatedAt: new Date() };
+        }
+      }
+      return todo;
+    });
   }
 
   updateTodo(id: string, updates: Partial<Todo>): void {
@@ -208,13 +223,24 @@ export class TodoService {
   }
 
   toggleExpanded(id: string): void {
-    this.todosSignal.update(todos =>
-      todos.map(todo =>
-        todo.id === id
-          ? { ...todo, isExpanded: !todo.isExpanded }
-          : todo
-      )
-    );
+    const todos = this.todosSignal();
+    const updatedTodos = this.toggleExpandedRecursive(todos, id);
+    this.todosSignal.set(updatedTodos);
+  }
+
+  private toggleExpandedRecursive(todos: Todo[], id: string): Todo[] {
+    return todos.map(todo => {
+      if (todo.id === id) {
+        return { ...todo, isExpanded: !todo.isExpanded };
+      }
+      if (todo.subtasks.length > 0) {
+        const updatedSubtasks = this.toggleExpandedRecursive(todo.subtasks, id);
+        if (updatedSubtasks !== todo.subtasks) {
+          return { ...todo, subtasks: updatedSubtasks };
+        }
+      }
+      return todo;
+    });
   }
 
   reorderTodos(fromIndex: number, toIndex: number): void {
