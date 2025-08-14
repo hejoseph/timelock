@@ -242,16 +242,17 @@ export class TodoService {
   }
 
   deleteTodo(id: string): void {
-    this.todosSignal.update(todos => {
-      // Remove main todo or subtask
-      return todos
-        .filter(todo => todo.id !== id)
-        .map(todo => ({
-          ...todo,
-          subtasks: todo.subtasks.filter(subtask => subtask.id !== id)
-        }));
-    });
+    this.todosSignal.update(todos => this.deleteTodoRecursive(todos, id));
     this.saveTodos();
+  }
+
+  private deleteTodoRecursive(todos: Todo[], id: string): Todo[] {
+    return todos
+      .filter(todo => todo.id !== id)
+      .map(todo => ({
+        ...todo,
+        subtasks: this.deleteTodoRecursive(todo.subtasks, id)
+      }));
   }
 
   toggleTodo(id: string): void {
