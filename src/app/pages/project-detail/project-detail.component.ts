@@ -1,4 +1,4 @@
-import { Component, inject, computed, OnInit } from '@angular/core';
+import { Component, inject, computed, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ProjectService } from '../../services/project.service';
@@ -8,6 +8,7 @@ import { TodoItemComponent } from '../../components/todo-item/todo-item.componen
 import { TodoFiltersComponent } from '../../components/todo-filters/todo-filters.component';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Todo, FilterType, SortType } from '../../models/todo.model';
+import { TaskEditorComponent } from '../../components/task-editor/task-editor.component';
 
 import { ConfirmationService } from '../../services/confirmation.service';
 
@@ -15,12 +16,13 @@ import { ConfirmationService } from '../../services/confirmation.service';
   selector: 'app-project-detail',
   standalone: true,
   imports: [
-    CommonModule, 
-    RouterModule, 
-    TodoFormComponent, 
-    TodoItemComponent, 
+    CommonModule,
+    RouterModule,
+    TodoFormComponent,
+    TodoItemComponent,
     TodoFiltersComponent,
-    DragDropModule
+    DragDropModule,
+    TaskEditorComponent
   ],
   template: `
     <div class="project-detail-container" *ngIf="project(); else notFound">
@@ -148,6 +150,13 @@ import { ConfirmationService } from '../../services/confirmation.service';
       </div>
     </div>
 
+    <app-task-editor
+      #taskEditor
+      [todo]="editingTodo"
+      (save)="onSaveTask($event)"
+      (close)="closeEditor()">
+    </app-task-editor>
+
     <ng-template #notFound>
       <div class="not-found">
         <h2>Project Not Found</h2>
@@ -161,6 +170,9 @@ import { ConfirmationService } from '../../services/confirmation.service';
   styleUrls: ['./project-detail.component.css']
 })
 export class ProjectDetailComponent implements OnInit {
+  @ViewChild('taskEditor') taskEditor!: TaskEditorComponent;
+  editingTodo: Todo | null = null;
+
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private projectService = inject(ProjectService);
@@ -330,13 +342,30 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   onShowAddTaskForm(): void {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => {
-      const todoForm = document.querySelector('app-todo-form') as any;
-      if (todoForm && !todoForm.showForm()) {
-        todoForm.toggleForm();
-      }
-    }, 300);
+    this.editingTodo = null;
+    this.taskEditor.open();
+  }
+
+  onSaveTask(updates: Partial<Todo>): void {
+    const projectId = this.projectId();
+    if (projectId) {
+      const newTodo: Omit<Todo, 'id' | 'createdAt' | 'updatedAt' | 'subtasks' | 'order'> = {
+        title: updates.title || '',
+        description: updates.description,
+        completed: updates.completed || false,
+        priority: updates.priority || 'medium',
+        dueDate: updates.dueDate,
+        category: updates.category,
+        isExpanded: false,
+        projectId: projectId
+      };
+      this.onAddTodo(newTodo);
+    }
+    this.closeEditor();
+  }
+
+  closeEditor(): void {
+    this.editingTodo = null;
   }
 
   trackByTodoId(index: number, todo: Todo): string {
