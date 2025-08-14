@@ -318,8 +318,15 @@ export class ProjectDetailComponent implements OnInit {
     this.todoService.setSearch(search);
   }
 
-  onClearCompleted(): void {
-    this.todoService.clearCompleted();
+  async onClearCompleted(): Promise<void> {
+    const confirmed = await this.confirmationService.open(
+      'Clear Completed Tasks',
+      'Are you sure you want to delete all completed tasks?'
+    );
+
+    if (confirmed) {
+      this.todoService.clearCompleted();
+    }
   }
 
   onShowAddTaskForm(): void {
