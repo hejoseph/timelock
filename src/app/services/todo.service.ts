@@ -36,10 +36,17 @@ export class TodoService {
     // Apply status filter
     switch (filter) {
       case 'active':
-        todos = todos.filter(todo => !todo.completed);
+        todos = todos.filter(todo => !todo.completed && !todo.archived);
         break;
       case 'completed':
-        todos = todos.filter(todo => todo.completed);
+        todos = todos.filter(todo => todo.completed && !todo.archived);
+        break;
+      case 'archived':
+        todos = todos.filter(todo => todo.archived);
+        break;
+      case 'all':
+      default:
+        todos = todos.filter(todo => !todo.archived);
         break;
     }
 
@@ -83,12 +90,14 @@ export class TodoService {
   stats = computed(() => {
     const todos = this.todosSignal();
     const allTasks = this.flattenTodos(todos);
+    const activeTasks = allTasks.filter(t => !t.archived);
     return {
-      total: allTasks.length,
-      completed: allTasks.filter(t => t.completed).length,
-      active: allTasks.filter(t => !t.completed).length,
-      highPriority: allTasks.filter(t => t.priority === 'high' && !t.completed).length,
-      overdue: allTasks.filter(t => 
+      total: activeTasks.length,
+      completed: activeTasks.filter(t => t.completed).length,
+      active: activeTasks.filter(t => !t.completed).length,
+      archived: allTasks.filter(t => t.archived).length,
+      highPriority: activeTasks.filter(t => t.priority === 'high' && !t.completed).length,
+      overdue: activeTasks.filter(t => 
         t.dueDate && 
         !t.completed && 
         new Date(t.dueDate) < new Date()
@@ -165,7 +174,8 @@ export class TodoService {
       updatedAt: new Date(),
       subtasks: [],
       isExpanded: false,
-      order: maxOrder + 1
+      order: maxOrder + 1,
+      archived: false
     };
 
     this.todosSignal.update(todos => [...todos, newTodo]);
@@ -183,6 +193,7 @@ export class TodoService {
       title: subtaskData.title || '',
       description: subtaskData.description,
       completed: subtaskData.completed || false,
+      archived: false,
       priority: subtaskData.priority || 'medium',
       dueDate: subtaskData.dueDate,
       category: subtaskData.category,
@@ -371,6 +382,44 @@ export class TodoService {
         ...todo,
         subtasks: this.clearCompletedRecursive(todo.subtasks)
       }));
+  }
+
+  archiveTodo(id: string): void {
+    const todos = this.todosSignal();
+    const updatedTodos = this.updateTodoRecursive(todos, id, { archived: true });
+    this.todosSignal.set(updatedTodos);
+    this.saveTodos();
+  }
+
+  unarchiveTodo(id: string): void {
+    const todos = this.todosSignal();
+    const updatedTodos = this.updateTodoRecursive(todos, id, { archived: false });
+    this.todosSignal.set(updatedTodos);
+    this.saveTodos();
+  }
+
+  archiveCompleted(): void {
+    this.todosSignal.update(todos => this.archiveCompletedRecursive(todos));
+    this.saveTodos();
+  }
+
+  private archiveCompletedRecursive(todos: Todo[]): Todo[] {
+    return todos.map(todo => {
+      const updatedTodo = { ...todo };
+      
+      // Archive completed tasks
+      if (todo.completed && !todo.archived) {
+        updatedTodo.archived = true;
+        updatedTodo.updatedAt = new Date();
+      }
+      
+      // Recursively handle subtasks
+      if (todo.subtasks.length > 0) {
+        updatedTodo.subtasks = this.archiveCompletedRecursive(todo.subtasks);
+      }
+      
+      return updatedTodo;
+    });
   }
 
   private updateTodoRecursive(todos: Todo[], id: string, updates: Partial<Todo>): Todo[] {

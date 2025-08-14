@@ -99,7 +99,9 @@ import { ConfirmationService } from '../../services/confirmation.service';
               (delete)="onDeleteTodo($event)"
               (addSubtaskEvent)="onAddSubtask($event)"
               (toggleExpanded)="onToggleExpanded($event)"
-              (subtaskDrop)="onSubtaskDrop($event.event, $event.parentId)">
+              (subtaskDrop)="onSubtaskDrop($event.event, $event.parentId)"
+              (archive)="onArchiveTodo($event)"
+              (unarchive)="onUnarchiveTodo($event)">
             </app-todo-item>
             
             <!-- Add Task Button at bottom of list -->
@@ -194,61 +196,21 @@ export class ProjectDetailComponent implements OnInit {
   );
 
   completedTodos = computed(() => 
-    this.projectTodos().filter(todo => todo.completed)
+    this.projectTodos().filter(todo => todo.completed && !todo.archived)
   );
 
   activeTodos = computed(() => 
-    this.projectTodos().filter(todo => !todo.completed)
+    this.projectTodos().filter(todo => !todo.completed && !todo.archived)
+  );
+
+  archivedTodos = computed(() => 
+    this.projectTodos().filter(todo => todo.archived)
   );
 
   // Filtered todos for display
   filteredTodos = computed(() => {
-    let todos = this.projectTodos();
-    const filter = this.filter();
-    const search = this.search().toLowerCase();
-    const sort = this.sort();
-
-    // Apply search filter
-    if (search) {
-      todos = todos.filter(todo => 
-        this.todoMatchesSearch(todo, search)
-      );
-    }
-
-    // Apply status filter
-    switch (filter) {
-      case 'active':
-        todos = todos.filter(todo => !todo.completed);
-        break;
-      case 'completed':
-        todos = todos.filter(todo => todo.completed);
-        break;
-    }
-
-    // Apply sorting
-    switch (sort) {
-      case 'priority':
-        const priorityOrder = { high: 3, medium: 2, low: 1 };
-        todos = todos.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
-        break;
-      case 'dueDate':
-        todos = todos.sort((a, b) => {
-          if (!a.dueDate && !b.dueDate) return 0;
-          if (!a.dueDate) return 1;
-          if (!b.dueDate) return -1;
-          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-        });
-        break;
-      case 'alphabetical':
-        todos = todos.sort((a, b) => a.title.localeCompare(b.title));
-        break;
-      case 'created':
-      default:
-        todos = todos.sort((a, b) => a.order - b.order);
-        break;
-    }
-
-    return todos;
+    const projectTodosIds = new Set(this.projectTodos().map(t => t.id));
+    return this.todoService.filteredTodos().filter(t => projectTodosIds.has(t.id));
   });
 
   // Todo service signals
@@ -259,12 +221,14 @@ export class ProjectDetailComponent implements OnInit {
   todoStats = computed(() => {
     const todos = this.projectTodos();
     const allTasks = this.flattenTodos(todos);
+    const activeTasks = allTasks.filter(t => !t.archived);
     return {
-      total: allTasks.length,
-      completed: allTasks.filter(t => t.completed).length,
-      active: allTasks.filter(t => !t.completed).length,
-      highPriority: allTasks.filter(t => t.priority === 'high' && !t.completed).length,
-      overdue: allTasks.filter(t => 
+      total: activeTasks.length,
+      completed: activeTasks.filter(t => t.completed).length,
+      active: activeTasks.filter(t => !t.completed).length,
+      archived: allTasks.filter(t => t.archived).length,
+      highPriority: activeTasks.filter(t => t.priority === 'high' && !t.completed).length,
+      overdue: activeTasks.filter(t => 
         t.dueDate && 
         !t.completed && 
         new Date(t.dueDate) < new Date()
@@ -321,6 +285,14 @@ export class ProjectDetailComponent implements OnInit {
     }
   }
 
+  onArchiveTodo(id: string): void {
+    this.todoService.archiveTodo(id);
+  }
+
+  onUnarchiveTodo(id: string): void {
+    this.todoService.unarchiveTodo(id);
+  }
+
   onFilterChange(filter: FilterType): void {
     this.todoService.setFilter(filter);
   }
@@ -361,6 +333,7 @@ export class ProjectDetailComponent implements OnInit {
         title: updates.title || '',
         description: updates.description,
         completed: updates.completed || false,
+        archived: false,
         priority: updates.priority || 'medium',
         dueDate: updates.dueDate,
         category: updates.category,

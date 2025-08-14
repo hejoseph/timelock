@@ -110,7 +110,8 @@ export class TodoFormComponent {
     priority: 'medium' as Todo['priority'],
     dueDate: '',
     category: '',
-    completed: false
+    completed: false,
+    archived: false
   };
 
   toggleForm(): void {
@@ -127,6 +128,7 @@ export class TodoFormComponent {
       title: this.formData.title.trim(),
       description: this.formData.description.trim() || undefined,
       completed: false,
+      archived: false,
       priority: this.formData.priority,
       dueDate: this.formData.dueDate ? new Date(this.formData.dueDate) : undefined,
       category: this.formData.category.trim() || undefined,
@@ -145,7 +147,8 @@ export class TodoFormComponent {
       priority: 'medium',
       dueDate: '',
       category: '',
-      completed: false
+      completed: false,
+      archived: false
     };
   }
 }

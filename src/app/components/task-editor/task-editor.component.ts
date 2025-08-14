@@ -118,7 +118,8 @@ export class TaskEditorComponent implements OnChanges {
     priority: 'medium' as Todo['priority'],
     dueDate: '',
     category: '',
-    completed: false
+    completed: false,
+    archived: false
   };
 
   ngOnChanges(changes: SimpleChanges) {
@@ -131,7 +132,8 @@ export class TaskEditorComponent implements OnChanges {
           priority: this.todo.priority,
           dueDate: this.todo.dueDate ? this.formatDateForInput(this.todo.dueDate) : '',
           category: this.todo.category || '',
-          completed: this.todo.completed
+          completed: this.todo.completed,
+          archived: this.todo.archived
         };
       }
     } else {
@@ -184,7 +186,8 @@ export class TaskEditorComponent implements OnChanges {
       priority: 'medium',
       dueDate: '',
       category: '',
-      completed: false
+      completed: false,
+      archived: false
     };
   }
 

@@ -181,6 +181,16 @@
   color: #dc2626;
 }
 
+.archive-btn:hover {
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
+.unarchive-btn:hover {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
 /* Add Subtask */
 .add-subtask {
   padding: 0 12px 8px 44px;

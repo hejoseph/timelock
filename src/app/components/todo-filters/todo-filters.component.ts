@@ -74,6 +74,12 @@ import { FilterType, SortType } from '../../models/todo.model';
               <span class="btn-icon">✅</span>
               Completed
             </button>
+            <button class="filter-btn" 
+                    [class.active]="currentFilter === 'archived'"
+                    (click)="onFilterChange('archived')">
+              <span class="btn-icon">📦</span>
+              Archived
+            </button>
           </div>
         </div>
 
@@ -110,6 +116,7 @@ export class TodoFiltersComponent {
     total: number;
     completed: number;
     active: number;
+    archived: number;
     highPriority: number;
     overdue: number;
   };

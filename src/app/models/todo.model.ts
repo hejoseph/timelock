@@ -3,6 +3,7 @@ export interface Todo {
   title: string;
   description?: string;
   completed: boolean;
+  archived: boolean;
   priority: 'low' | 'medium' | 'high';
   dueDate?: Date;
   createdAt: Date;
@@ -15,5 +16,5 @@ export interface Todo {
   order: number;
 }
 
-export type FilterType = 'all' | 'active' | 'completed';
+export type FilterType = 'all' | 'active' | 'completed' | 'archived';
 export type SortType = 'created' | 'priority' | 'dueDate' | 'alphabetical';
