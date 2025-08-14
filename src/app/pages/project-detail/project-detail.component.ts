@@ -1,4 +1,4 @@
-import { Component, inject, computed, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, computed, OnInit, ViewChild, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ProjectService } from '../../services/project.service';
@@ -184,7 +184,8 @@ export class ProjectDetailComponent implements OnInit {
   private todoService = inject(TodoService);
   private confirmationService = inject(ConfirmationService);
 
-  projectId = computed(() => this.route.snapshot.paramMap.get('id'));
+  private projectIdSignal = signal<string | null>(null);
+  projectId = this.projectIdSignal.asReadonly();
   project = computed(() => {
     const id = this.projectId();
     return id ? this.projectService.getProjectById(id) : null;
@@ -237,11 +238,14 @@ export class ProjectDetailComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    // Set current project in service
-    const projectId = this.projectId();
-    if (projectId) {
-      this.projectService.setCurrentProject(projectId);
-    }
+    // Subscribe to route parameter changes
+    this.route.paramMap.subscribe(params => {
+      const projectId = params.get('id');
+      this.projectIdSignal.set(projectId);
+      if (projectId) {
+        this.projectService.setCurrentProject(projectId);
+      }
+    });
   }
 
   goBack(): void {
