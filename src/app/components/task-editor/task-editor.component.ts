@@ -55,7 +55,7 @@ import { Todo } from '../../models/todo.model';
             <div class="form-group">
               <label class="form-label">Due Date</label>
               <input 
-                type="date" 
+                type="datetime-local" 
                 class="form-input"
                 [(ngModel)]="formData.dueDate"
                 name="dueDate"
@@ -105,7 +105,11 @@ export class TaskEditorComponent implements OnChanges {
   private isOpenSignal = signal(false);
   isOpen = this.isOpenSignal.asReadonly();
 
-  today = new Date().toISOString().split('T')[0];
+  get today(): string {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  }
   isEditing = false;
 
   formData = {
@@ -185,6 +189,8 @@ export class TaskEditorComponent implements OnChanges {
   }
 
   private formatDateForInput(date: Date): string {
-    return new Date(date).toISOString().split('T')[0];
+    const localDate = new Date(date);
+    localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset());
+    return localDate.toISOString().slice(0, 16);
   }
 }

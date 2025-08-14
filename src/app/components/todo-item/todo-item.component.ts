@@ -210,19 +210,26 @@ export class TodoItemComponent {
   formatDate(date: Date): string {
     const now = new Date();
     const todoDate = new Date(date);
-    const diffTime = todoDate.getTime() - now.getTime();
+    
+    // Reset time part for day comparison
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dueDate = new Date(todoDate.getFullYear(), todoDate.getMonth(), todoDate.getDate());
+
+    const diffTime = dueDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    if (diffDays === -1) return 'Yesterday';
-    if (diffDays < 0) return `${Math.abs(diffDays)} days ago`;
-    if (diffDays < 7) return `In ${diffDays} days`;
-    
-    return todoDate.toLocaleDateString();
-  }
+    const timeFormat: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+    const timeString = todoDate.toLocaleTimeString([], timeFormat);
 
-  private formatDateForInput(date: Date): string {
-    return date.toISOString().split('T')[0];
+    if (diffDays === 0) return `Today at ${timeString}`;
+    if (diffDays === 1) return `Tomorrow at ${timeString}`;
+    if (diffDays === -1) return `Yesterday at ${timeString}`;
+    
+    const dateFormat: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+    if (now.getFullYear() !== todoDate.getFullYear()) {
+      dateFormat.year = 'numeric';
+    }
+    
+    return `${todoDate.toLocaleDateString([], dateFormat)} at ${timeString}`;
   }
 }
