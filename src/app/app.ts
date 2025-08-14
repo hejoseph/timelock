@@ -26,26 +26,35 @@ import { ProjectService } from './services/project.service';
         </div>
         
         <nav class="sidebar-nav">
-          <a routerLink="/projects" 
-             routerLinkActive="active" 
-             class="nav-item"
-             (click)="closeSidebarOnMobile()">
-            <span class="nav-icon">&#x1F4C1;</span>
-            Projects
-          </a>
-          
-          <!-- Project List -->
-          <div class="project-list">
-            <a *ngFor="let project of projectService.activeProjects()" 
-               [routerLink]="['/project', project.id]"
-               routerLinkActive="active"
-               class="project-item"
-               (click)="closeSidebarOnMobile()">
-              <span class="project-icon" [style.color]="project.color">
-                {{ project.icon || '&#x1F4CB;' }}
-              </span>
-              <span class="project-name">{{ project.name }}</span>
-            </a>
+          <div class="nav-section">
+            <div class="nav-item-with-toggle">
+              <button class="nav-toggle" (click)="toggleProjectsExpanded()">
+                <span class="toggle-icon" [class.expanded]="projectsExpanded()">
+                  &#x25B6;
+                </span>
+              </button>
+              <a routerLink="/projects" 
+                 routerLinkActive="active" 
+                 class="nav-item nav-item-main"
+                 (click)="closeSidebarOnMobile()">
+                <span class="nav-icon">&#x1F4C1;</span>
+                Projects
+              </a>
+            </div>
+            
+            <!-- Project List -->
+            <div class="project-list" [class.collapsed]="!projectsExpanded()">
+              <a *ngFor="let project of projectService.activeProjects()" 
+                 [routerLink]="['/project', project.id]"
+                 routerLinkActive="active"
+                 class="project-item"
+                 (click)="closeSidebarOnMobile()">
+                <span class="project-icon" [style.color]="project.color">
+                  {{ project.icon || '&#x1F4CB;' }}
+                </span>
+                <span class="project-name">{{ project.name }}</span>
+              </a>
+            </div>
           </div>
         </nav>
 
@@ -70,6 +79,7 @@ import { ProjectService } from './services/project.service';
 export class App {
   projectService = inject(ProjectService);
   sidebarOpen = signal(false);
+  projectsExpanded = signal(true);
 
   toggleSidebar() {
     this.sidebarOpen.set(!this.sidebarOpen());
@@ -84,5 +94,9 @@ export class App {
     if (window.innerWidth <= 768) {
       this.closeSidebar();
     }
+  }
+
+  toggleProjectsExpanded() {
+    this.projectsExpanded.set(!this.projectsExpanded());
   }
 }
