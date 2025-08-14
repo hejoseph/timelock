@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ProjectService } from '../../services/project.service';
 import { TodoService } from '../../services/todo.service';
 import { Project, DEFAULT_PROJECT_COLORS, PROJECT_ICONS } from '../../models/project.model';
+import { ConfirmationService } from '../../services/confirmation.service';
 
 @Component({
   selector: 'app-projects',
@@ -27,7 +28,7 @@ import { Project, DEFAULT_PROJECT_COLORS, PROJECT_ICONS } from '../../models/pro
             <div class="form-group">
               <label>Project Name</label>
               <input type="text" 
-                     [(ngModel)]="newProject.name" 
+                     [(ngModel)]="newProject['name']" 
                      name="name" 
                      placeholder="Enter project name"
                      required>
@@ -35,7 +36,7 @@ import { Project, DEFAULT_PROJECT_COLORS, PROJECT_ICONS } from '../../models/pro
             <div class="form-group">
               <label>Description</label>
               <input type="text" 
-                     [(ngModel)]="newProject.description" 
+                     [(ngModel)]="newProject['description']" 
                      name="description" 
                      placeholder="Optional description">
             </div>
@@ -48,8 +49,8 @@ import { Project, DEFAULT_PROJECT_COLORS, PROJECT_ICONS } from '../../models/pro
                 <div *ngFor="let color of projectColors" 
                      class="color-option" 
                      [style.background-color]="color"
-                     [class.selected]="newProject.color === color"
-                     (click)="newProject.color = color">
+                     [class.selected]="newProject['color'] === color"
+                     (click)="newProject['color'] = color">
                 </div>
               </div>
             </div>
@@ -58,8 +59,8 @@ import { Project, DEFAULT_PROJECT_COLORS, PROJECT_ICONS } from '../../models/pro
               <div class="icon-picker">
                 <div *ngFor="let icon of projectIcons" 
                      class="icon-option" 
-                     [class.selected]="newProject.icon === icon"
-                     (click)="newProject.icon = icon">
+                     [class.selected]="newProject['icon'] === icon"
+                     (click)="newProject['icon'] = icon">
                   {{ icon }}
                 </div>
               </div>
@@ -84,7 +85,7 @@ import { Project, DEFAULT_PROJECT_COLORS, PROJECT_ICONS } from '../../models/pro
             <div class="form-group">
               <label>Project Name</label>
               <input type="text" 
-                     [(ngModel)]="project.name" 
+                     [(ngModel)]="project['name']" 
                      name="name" 
                      placeholder="Enter project name"
                      required>
@@ -92,7 +93,7 @@ import { Project, DEFAULT_PROJECT_COLORS, PROJECT_ICONS } from '../../models/pro
             <div class="form-group">
               <label>Description</label>
               <input type="text" 
-                     [(ngModel)]="project.description" 
+                     [(ngModel)]="project['description']" 
                      name="description" 
                      placeholder="Optional description">
             </div>
@@ -105,8 +106,8 @@ import { Project, DEFAULT_PROJECT_COLORS, PROJECT_ICONS } from '../../models/pro
                 <div *ngFor="let color of projectColors" 
                      class="color-option" 
                      [style.background-color]="color"
-                     [class.selected]="project.color === color"
-                     (click)="project.color = color">
+                     [class.selected]="project['color'] === color"
+                     (click)="project['color'] = color">
                 </div>
               </div>
             </div>
@@ -115,8 +116,8 @@ import { Project, DEFAULT_PROJECT_COLORS, PROJECT_ICONS } from '../../models/pro
               <div class="icon-picker">
                 <div *ngFor="let icon of projectIcons" 
                      class="icon-option" 
-                     [class.selected]="project.icon === icon"
-                     (click)="project.icon = icon">
+                     [class.selected]="project['icon'] === icon"
+                     (click)="project['icon'] = icon">
                   {{ icon }}
                 </div>
               </div>
@@ -196,6 +197,7 @@ import { Project, DEFAULT_PROJECT_COLORS, PROJECT_ICONS } from '../../models/pro
 export class ProjectsComponent {
   projectService = inject(ProjectService);
   todoService = inject(TodoService);
+  confirmationService = inject(ConfirmationService);
   
   showCreateForm = signal(false);
   editingProject = signal<Project | null>(null);
@@ -258,7 +260,12 @@ export class ProjectsComponent {
   }
 
   async deleteProject(project: Project): Promise<void> {
-    if (confirm(`Are you sure you want to delete "${project.name}"? This will also delete all tasks in this project.`)) {
+    const confirmed = await this.confirmationService.open(
+      'Delete Project',
+      `Are you sure you want to delete "${project.name}"? This will also delete all tasks in this project.`
+    );
+
+    if (confirmed) {
       try {
         await this.projectService.deleteProject(project.id);
       } catch (error) {
