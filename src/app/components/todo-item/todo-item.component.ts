@@ -88,7 +88,8 @@ import { TaskEditorComponent } from '../task-editor/task-editor.component';
           (update)="onSubtaskUpdate($event)"
           (delete)="onSubtaskDelete($event)"
           (addSubtaskEvent)="onSubtaskAddSubtask($event)"
-          (toggleExpanded)="onSubtaskToggleExpanded($event)">
+          (toggleExpanded)="onSubtaskToggleExpanded($event)"
+          (subtaskDrop)="onSubtaskDropEvent($event)">
         </app-todo-item>
       </div>
     </div>
@@ -179,6 +180,10 @@ export class TodoItemComponent {
 
   onSubtaskToggleExpanded(subtaskId: string): void {
     this.toggleExpanded.emit(subtaskId);
+  }
+
+  onSubtaskDropEvent(event: { parentId: string; event: CdkDragDrop<Todo[]> }) {
+    this.subtaskDrop.emit(event);
   }
 
   onSubtaskDrop(event: CdkDragDrop<Todo[]>) {
