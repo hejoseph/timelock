@@ -138,8 +138,6 @@ export class TodoFiltersComponent {
   }
 
   onClearCompleted(): void {
-    if (confirm(`Are you sure you want to delete ${this.stats.completed} completed todos?`)) {
-      this.clearCompleted.emit();
-    }
+    this.clearCompleted.emit();
   }
 }
