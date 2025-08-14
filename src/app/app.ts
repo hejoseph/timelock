@@ -1,6 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterModule } from '@angular/router';
+import { ProjectService } from './services/project.service';
 
 @Component({
   selector: 'app-root',
@@ -32,6 +33,20 @@ import { RouterOutlet, RouterModule } from '@angular/router';
             <span class="nav-icon">&#x1F4C1;</span>
             Projects
           </a>
+          
+          <!-- Project List -->
+          <div class="project-list">
+            <a *ngFor="let project of projectService.activeProjects()" 
+               [routerLink]="['/project', project.id]"
+               routerLinkActive="active"
+               class="project-item"
+               (click)="closeSidebarOnMobile()">
+              <span class="project-icon" [style.color]="project.color">
+                {{ project.icon || '&#x1F4CB;' }}
+              </span>
+              <span class="project-name">{{ project.name }}</span>
+            </a>
+          </div>
         </nav>
 
         <div class="sidebar-footer">
@@ -53,6 +68,7 @@ import { RouterOutlet, RouterModule } from '@angular/router';
   styleUrl: './app.css'
 })
 export class App {
+  projectService = inject(ProjectService);
   sidebarOpen = signal(false);
 
   toggleSidebar() {
