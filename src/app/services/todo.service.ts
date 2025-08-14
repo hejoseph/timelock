@@ -360,8 +360,17 @@ export class TodoService {
   }
 
   clearCompleted(): void {
-    this.todosSignal.update(todos => todos.filter(todo => !todo.completed));
+    this.todosSignal.update(todos => this.clearCompletedRecursive(todos));
     this.saveTodos();
+  }
+
+  private clearCompletedRecursive(todos: Todo[]): Todo[] {
+    return todos
+      .filter(todo => !todo.completed)
+      .map(todo => ({
+        ...todo,
+        subtasks: this.clearCompletedRecursive(todo.subtasks)
+      }));
   }
 
   private updateTodoRecursive(todos: Todo[], id: string, updates: Partial<Todo>): Todo[] {
