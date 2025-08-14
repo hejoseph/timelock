@@ -78,7 +78,12 @@ import { Todo, FilterType, SortType } from '../../models/todo.model';
 
         <!-- Todo List -->
         <div class="todos-section">
-          <div class="todos-list" cdkDropList [cdkDropListData]="filteredTodos()" (cdkDropListDropped)="onDrop($event)" *ngIf="filteredTodos().length > 0; else emptyState">
+          <div class="todos-list" 
+               cdkDropList 
+               id="main-todos-list"
+               [cdkDropListData]="filteredTodos()" 
+               (cdkDropListDropped)="onDrop($event)" 
+               *ngIf="filteredTodos().length > 0; else emptyState">
             <app-todo-item
               *ngFor="let todo of filteredTodos(); trackBy: trackByTodoId"
               cdkDrag
@@ -354,11 +359,32 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   onSubtaskDrop(event: CdkDragDrop<Todo[]>, parentId: string) {
-    const parentTodo = this.todoService.todos().find(t => t.id === parentId);
-    if (parentTodo) {
+    // Find the parent todo at any nesting level
+    const parentTodo = this.findTodoByIdInProject(parentId);
+    if (parentTodo && parentTodo.subtasks.length > 0) {
       let subtasks = [...parentTodo.subtasks];
       moveItemInArray(subtasks, event.previousIndex, event.currentIndex);
       this.todoService.reorderSubtasks(parentId, subtasks.map(s => s.id));
     }
+  }
+
+  private findTodoByIdInProject(id: string): Todo | undefined {
+    const projectTodos = this.projectTodos();
+    return this.findTodoByIdRecursive(projectTodos, id);
+  }
+
+  private findTodoByIdRecursive(todos: Todo[], id: string): Todo | undefined {
+    for (const todo of todos) {
+      if (todo.id === id) {
+        return todo;
+      }
+      if (todo.subtasks.length > 0) {
+        const found = this.findTodoByIdRecursive(todo.subtasks, id);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return undefined;
   }
 }

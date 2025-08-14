@@ -78,7 +78,12 @@ import { TaskEditorComponent } from '../task-editor/task-editor.component';
       </div>
 
       <!-- Subtasks -->
-      <div class="subtasks" cdkDropList [cdkDropListData]="todo.subtasks" (cdkDropListDropped)="onSubtaskDrop($event)" *ngIf="todo.isExpanded && todo.subtasks.length > 0">
+      <div class="subtasks" 
+           cdkDropList 
+           [id]="'subtasks-' + todo.id"
+           [cdkDropListData]="todo.subtasks" 
+           (cdkDropListDropped)="onSubtaskDrop($event)" 
+           *ngIf="todo.isExpanded && todo.subtasks.length > 0">
         <app-todo-item
           *ngFor="let subtask of todo.subtasks; trackBy: trackBySubtaskId"
           cdkDrag
@@ -183,10 +188,12 @@ export class TodoItemComponent {
   }
 
   onSubtaskDropEvent(event: { parentId: string; event: CdkDragDrop<Todo[]> }) {
+    // Propagate the event up the chain - don't modify the parentId
     this.subtaskDrop.emit(event);
   }
 
   onSubtaskDrop(event: CdkDragDrop<Todo[]>) {
+    // This is a direct drop on this todo's subtasks
     this.subtaskDrop.emit({ parentId: this.todo.id, event });
   }
 

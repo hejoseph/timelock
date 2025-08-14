@@ -305,18 +305,45 @@ export class TodoService {
 
   reorderSubtasks(parentId: string, subtaskIds: string[]): void {
     this.todosSignal.update(todos => {
-      const parent = this.findTodoById(todos, parentId);
-      if (!parent) return todos;
-
-      const subtaskMap = new Map(parent.subtasks.map(s => [s.id, s]));
-      parent.subtasks = subtaskIds.map((id, index) => {
-        const subtask = subtaskMap.get(id)!;
-        return { ...subtask, order: index };
-      });
-
-      return [...todos];
+      return this.reorderSubtasksRecursive(todos, parentId, subtaskIds);
     });
     this.saveTodos();
+  }
+
+  private reorderSubtasksRecursive(todos: Todo[], parentId: string, subtaskIds: string[]): Todo[] {
+    return todos.map(todo => {
+      if (todo.id === parentId) {
+        // Found the parent, reorder its direct subtasks
+        const subtaskMap = new Map(todo.subtasks.map(s => [s.id, s]));
+        const reorderedSubtasks = subtaskIds.map((id, index) => {
+          const subtask = subtaskMap.get(id);
+          if (subtask) {
+            return { ...subtask, order: index };
+          }
+          return subtask;
+        }).filter(Boolean) as Todo[];
+        
+        return { 
+          ...todo, 
+          subtasks: reorderedSubtasks,
+          updatedAt: new Date()
+        };
+      }
+      
+      // Check if this todo has subtasks and recursively search
+      if (todo.subtasks.length > 0) {
+        const updatedSubtasks = this.reorderSubtasksRecursive(todo.subtasks, parentId, subtaskIds);
+        if (updatedSubtasks !== todo.subtasks) {
+          return { 
+            ...todo, 
+            subtasks: updatedSubtasks,
+            updatedAt: new Date()
+          };
+        }
+      }
+      
+      return todo;
+    });
   }
 
   setFilter(filter: FilterType): void {
