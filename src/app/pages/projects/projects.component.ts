@@ -77,6 +77,63 @@ import { Project, DEFAULT_PROJECT_COLORS, PROJECT_ICONS } from '../../models/pro
         </form>
       </div>
 
+      <!-- Edit Project Form -->
+      <div class="create-form" *ngIf="editingProject() as project">
+        <form (ngSubmit)="updateProject()" #editProjectForm="ngForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Project Name</label>
+              <input type="text" 
+                     [(ngModel)]="project.name" 
+                     name="name" 
+                     placeholder="Enter project name"
+                     required>
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" 
+                     [(ngModel)]="project.description" 
+                     name="description" 
+                     placeholder="Optional description">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Color</label>
+              <div class="color-picker">
+                <div *ngFor="let color of projectColors" 
+                     class="color-option" 
+                     [style.background-color]="color"
+                     [class.selected]="project.color === color"
+                     (click)="project.color = color">
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Icon</label>
+              <div class="icon-picker">
+                <div *ngFor="let icon of projectIcons" 
+                     class="icon-option" 
+                     [class.selected]="project.icon === icon"
+                     (click)="project.icon = icon">
+                  {{ icon }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" [disabled]="!editProjectForm.form.valid">
+              Update Project
+            </button>
+            <button type="button" class="btn btn-secondary" (click)="cancelEdit()">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+
       <!-- Projects Grid -->
       <div class="projects-grid">
         <div *ngFor="let project of projectService.activeProjects(); trackBy: trackByProjectId" 
@@ -141,10 +198,11 @@ export class ProjectsComponent {
   todoService = inject(TodoService);
   
   showCreateForm = signal(false);
+  editingProject = signal<Project | null>(null);
   projectColors = DEFAULT_PROJECT_COLORS;
   projectIcons = PROJECT_ICONS;
   
-  newProject = {
+  newProject: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'order'> = {
     name: '',
     description: '',
     color: DEFAULT_PROJECT_COLORS[0],
@@ -175,8 +233,28 @@ export class ProjectsComponent {
   }
 
   editProject(project: Project): void {
-    // TODO: Implement edit functionality
-    console.log('Edit project:', project);
+    this.editingProject.set({ ...project });
+  }
+
+  async updateProject(): Promise<void> {
+    const project = this.editingProject();
+    if (!project || !project.name.trim()) return;
+
+    try {
+      await this.projectService.updateProject(project.id, {
+        name: project.name,
+        description: project.description,
+        color: project.color,
+        icon: project.icon,
+      });
+      this.cancelEdit();
+    } catch (error) {
+      console.error('Error updating project:', error);
+    }
+  }
+
+  cancelEdit(): void {
+    this.editingProject.set(null);
   }
 
   async deleteProject(project: Project): Promise<void> {
