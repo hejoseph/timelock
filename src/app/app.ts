@@ -1,74 +1,32 @@
-import { Component, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TodoService } from './services/todo.service';
-import { TodoFormComponent } from './components/todo-form/todo-form.component';
-import { TodoItemComponent } from './components/todo-item/todo-item.component';
-import { TodoFiltersComponent } from './components/todo-filters/todo-filters.component';
-import { Todo, FilterType, SortType } from './models/todo.model';
+import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    CommonModule,
-    TodoFormComponent,
-    TodoItemComponent,
-    TodoFiltersComponent
-  ],
-  templateUrl: './app.html',
+  imports: [CommonModule, RouterOutlet],
+  template: `
+    <div class="app-container">
+      <header class="app-header">
+        <div class="header-content">
+          <h1 class="app-title">
+            <span class="title-icon">&#x2728;</span>
+            TaskFlow Pro
+            <span class="title-subtitle">Professional Task Management</span>
+          </h1>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <router-outlet></router-outlet>
+      </main>
+
+      <footer class="app-footer">
+        <p>Made with &#x2764;&#xFE0F; using Angular</p>
+      </footer>
+    </div>
+  `,
   styleUrl: './app.css'
 })
-export class App {
-  private todoService = inject(TodoService);
-
-  // Expose service signals to template
-  todos = this.todoService.filteredTodos;
-  filter = this.todoService.filter;
-  sort = this.todoService.sort;
-  search = this.todoService.search;
-  stats = this.todoService.stats;
-
-  onAddTodo(todoData: Omit<Todo, 'id' | 'createdAt' | 'updatedAt' | 'subtasks' | 'order'>): void {
-    this.todoService.addTodo(todoData);
-  }
-
-  onAddSubtask(data: { parentId: string; subtaskData: Partial<Todo> }): void {
-    this.todoService.addSubtask(data.parentId, data.subtaskData);
-  }
-
-  onToggleExpanded(id: string): void {
-    this.todoService.toggleExpanded(id);
-  }
-
-  onToggleTodo(id: string): void {
-    this.todoService.toggleTodo(id);
-  }
-
-  onUpdateTodo(data: { id: string; updates: Partial<Todo> }): void {
-    this.todoService.updateTodo(data.id, data.updates);
-  }
-
-  onDeleteTodo(id: string): void {
-    this.todoService.deleteTodo(id);
-  }
-
-  onFilterChange(filter: FilterType): void {
-    this.todoService.setFilter(filter);
-  }
-
-  onSortChange(sort: SortType): void {
-    this.todoService.setSort(sort);
-  }
-
-  onSearchChange(search: string): void {
-    this.todoService.setSearch(search);
-  }
-
-  onClearCompleted(): void {
-    this.todoService.clearCompleted();
-  }
-
-  trackByTodoId(index: number, todo: Todo): string {
-    return todo.id;
-  }
-}
+export class App {}

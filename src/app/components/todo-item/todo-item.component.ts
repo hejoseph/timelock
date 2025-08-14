@@ -2,12 +2,13 @@ import { Component, Input, Output, EventEmitter, signal, ViewChild } from '@angu
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Todo } from '../../models/todo.model';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { TaskEditorComponent } from '../task-editor/task-editor.component';
 
 @Component({
   selector: 'app-todo-item',
   standalone: true,
-  imports: [CommonModule, FormsModule, TaskEditorComponent],
+  imports: [CommonModule, FormsModule, TaskEditorComponent, DragDropModule],
   template: `
     <div class="task-item" [class.has-subtasks]="todo.subtasks.length > 0">
       <!-- Main Task -->
@@ -77,14 +78,23 @@ import { TaskEditorComponent } from '../task-editor/task-editor.component';
       </div>
 
       <!-- Subtasks -->
-      <div class="subtasks" *ngIf="todo.isExpanded && todo.subtasks.length > 0">
+      <div class="subtasks" 
+           cdkDropList 
+           [id]="'subtasks-' + todo.id"
+           [cdkDropListData]="todo.subtasks" 
+           (cdkDropListDropped)="onSubtaskDrop($event)" 
+           *ngIf="todo.isExpanded && todo.subtasks.length > 0">
         <app-todo-item
           *ngFor="let subtask of todo.subtasks; trackBy: trackBySubtaskId"
+          cdkDrag
           [todo]="subtask"
           [isSubtask]="true"
           (toggle)="onSubtaskToggle($event)"
           (update)="onSubtaskUpdate($event)"
-          (delete)="onSubtaskDelete($event)">
+          (delete)="onSubtaskDelete($event)"
+          (addSubtaskEvent)="onSubtaskAddSubtask($event)"
+          (toggleExpanded)="onSubtaskToggleExpanded($event)"
+          (subtaskDrop)="onSubtaskDropEvent($event)">
         </app-todo-item>
       </div>
     </div>
@@ -108,6 +118,7 @@ export class TodoItemComponent {
   @Output() update = new EventEmitter<{ id: string; updates: Partial<Todo> }>();
   @Output() addSubtaskEvent = new EventEmitter<{ parentId: string; subtaskData: Partial<Todo> }>();
   @Output() toggleExpanded = new EventEmitter<string>();
+  @Output() subtaskDrop = new EventEmitter<{ parentId: string; event: CdkDragDrop<Todo[]> }>();
 
   @ViewChild('taskEditor') taskEditor!: TaskEditorComponent;
 
@@ -118,10 +129,10 @@ export class TodoItemComponent {
   }
 
   onDelete(): void {
-    const taskType = this.isSubtask ? 'subtask' : 'task';
-    if (confirm(`Are you sure you want to delete this ${taskType}?`)) {
-      this.delete.emit(this.todo.id);
-    }
+    // const taskType = this.isSubtask ? 'subtask' : 'task';
+    // if (confirm(`Are you sure you want to delete this ${taskType}?`)) {
+    this.delete.emit(this.todo.id);
+    // }
   }
 
   onToggleExpanded(): void {
@@ -166,6 +177,24 @@ export class TodoItemComponent {
 
   onSubtaskDelete(subtaskId: string): void {
     this.delete.emit(subtaskId);
+  }
+
+  onSubtaskAddSubtask(data: { parentId: string; subtaskData: Partial<Todo> }): void {
+    this.addSubtaskEvent.emit(data);
+  }
+
+  onSubtaskToggleExpanded(subtaskId: string): void {
+    this.toggleExpanded.emit(subtaskId);
+  }
+
+  onSubtaskDropEvent(event: { parentId: string; event: CdkDragDrop<Todo[]> }) {
+    // Propagate the event up the chain - don't modify the parentId
+    this.subtaskDrop.emit(event);
+  }
+
+  onSubtaskDrop(event: CdkDragDrop<Todo[]>) {
+    // This is a direct drop on this todo's subtasks
+    this.subtaskDrop.emit({ parentId: this.todo.id, event });
   }
 
   trackBySubtaskId(index: number, subtask: Todo): string {

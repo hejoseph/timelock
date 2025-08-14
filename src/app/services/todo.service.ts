@@ -1,11 +1,12 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { Todo, FilterType, SortType } from '../models/todo.model';
+import { IndexedDBService } from './indexeddb.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TodoService {
-  private readonly STORAGE_KEY = 'awesome-todos';
+  private indexedDBService = inject(IndexedDBService);
   
   // Signals for reactive state management
   private todosSignal = signal<Todo[]>([]);
@@ -107,7 +108,50 @@ export class TodoService {
   }
 
   constructor() {
-    this.loadTodos();
+    this.initializeData();
+  }
+
+  private async initializeData(): Promise<void> {
+    try {
+      // First, try to migrate data from localStorage if it exists
+      await this.migrateFromLocalStorage();
+      
+      // Then load data from IndexedDB
+      await this.loadTodos();
+    } catch (error) {
+      console.error('Error initializing data:', error);
+    }
+  }
+
+  private async migrateFromLocalStorage(): Promise<void> {
+    const LEGACY_STORAGE_KEY = 'awesome-todos';
+    const stored = localStorage.getItem(LEGACY_STORAGE_KEY);
+    
+    if (stored) {
+      try {
+        const todos = JSON.parse(stored).map((todo: any) => ({
+          ...todo,
+          createdAt: new Date(todo.createdAt),
+          updatedAt: new Date(todo.updatedAt),
+          dueDate: todo.dueDate ? new Date(todo.dueDate) : undefined,
+          subtasks: todo.subtasks || [],
+          isExpanded: todo.isExpanded ?? false,
+          order: todo.order || 0
+        }));
+
+        // Check if IndexedDB is empty before migrating
+        const existingTodos = await this.indexedDBService.loadTodos();
+        if (existingTodos.length === 0) {
+          await this.indexedDBService.saveTodos(todos);
+          console.log('Migrated', todos.length, 'todos from localStorage to IndexedDB');
+        }
+        
+        // Remove from localStorage after successful migration
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      } catch (error) {
+        console.error('Error migrating from localStorage:', error);
+      }
+    }
   }
 
   addTodo(todoData: Omit<Todo, 'id' | 'createdAt' | 'updatedAt' | 'subtasks' | 'order'>): void {
@@ -130,7 +174,7 @@ export class TodoService {
 
   addSubtask(parentId: string, subtaskData: Partial<Todo>): void {
     const todos = this.todosSignal();
-    const parent = todos.find(t => t.id === parentId);
+    const parent = this.findTodoById(todos, parentId);
     if (!parent) return;
 
     const maxOrder = Math.max(0, ...parent.subtasks.map(s => s.order || 0));
@@ -151,14 +195,29 @@ export class TodoService {
       order: maxOrder + 1
     };
 
-    this.todosSignal.update(todos =>
-      todos.map(todo =>
-        todo.id === parentId
-          ? { ...todo, subtasks: [...todo.subtasks, newSubtask], updatedAt: new Date() }
-          : todo
-      )
-    );
+    const updatedTodos = this.addSubtaskRecursive(todos, parentId, newSubtask);
+    this.todosSignal.set(updatedTodos);
     this.saveTodos();
+  }
+
+  private addSubtaskRecursive(todos: Todo[], parentId: string, newSubtask: Todo): Todo[] {
+    return todos.map(todo => {
+      if (todo.id === parentId) {
+        return { 
+          ...todo, 
+          subtasks: [...todo.subtasks, newSubtask], 
+          updatedAt: new Date(),
+          isExpanded: true // Auto-expand when adding subtask
+        };
+      }
+      if (todo.subtasks.length > 0) {
+        const updatedSubtasks = this.addSubtaskRecursive(todo.subtasks, parentId, newSubtask);
+        if (updatedSubtasks !== todo.subtasks) {
+          return { ...todo, subtasks: updatedSubtasks, updatedAt: new Date() };
+        }
+      }
+      return todo;
+    });
   }
 
   updateTodo(id: string, updates: Partial<Todo>): void {
@@ -183,70 +242,109 @@ export class TodoService {
   }
 
   deleteTodo(id: string): void {
-    this.todosSignal.update(todos => {
-      // Remove main todo or subtask
-      return todos
-        .filter(todo => todo.id !== id)
-        .map(todo => ({
-          ...todo,
-          subtasks: todo.subtasks.filter(subtask => subtask.id !== id)
-        }));
-    });
+    this.todosSignal.update(todos => this.deleteTodoRecursive(todos, id));
     this.saveTodos();
+  }
+
+  private deleteTodoRecursive(todos: Todo[], id: string): Todo[] {
+    return todos
+      .filter(todo => todo.id !== id)
+      .map(todo => ({
+        ...todo,
+        subtasks: this.deleteTodoRecursive(todo.subtasks, id)
+      }));
   }
 
   toggleTodo(id: string): void {
-    this.updateTodo(id, { completed: undefined }); // Will be handled by updateTodo
-    this.todosSignal.update(todos =>
-      todos.map(todo => {
-        if (todo.id === id) {
-          return { ...todo, completed: !todo.completed, updatedAt: new Date() };
-        }
-        // Check subtasks
-        const updatedSubtasks = todo.subtasks.map(subtask =>
-          subtask.id === id
-            ? { ...subtask, completed: !subtask.completed, updatedAt: new Date() }
-            : subtask
-        );
-        if (updatedSubtasks !== todo.subtasks) {
-          return { ...todo, subtasks: updatedSubtasks, updatedAt: new Date() };
-        }
-        return todo;
-      })
-    );
-    this.saveTodos();
+    const todos = this.todosSignal();
+    const todoToToggle = this.findTodoById(todos, id);
+
+    if (todoToToggle) {
+      const newCompletedState = !todoToToggle.completed;
+      const updatedTodos = this.updateTodoRecursive(todos, id, { completed: newCompletedState });
+      this.todosSignal.set(updatedTodos);
+      this.saveTodos();
+    }
   }
 
   toggleExpanded(id: string): void {
-    this.todosSignal.update(todos =>
-      todos.map(todo =>
-        todo.id === id
-          ? { ...todo, isExpanded: !todo.isExpanded }
-          : todo
-      )
-    );
+    const todos = this.todosSignal();
+    const updatedTodos = this.toggleExpandedRecursive(todos, id);
+    this.todosSignal.set(updatedTodos);
   }
 
-  reorderTodos(fromIndex: number, toIndex: number): void {
-    const filteredTodos = this.filteredTodos();
-    const allTodos = this.todosSignal();
-    
-    // Get the todo being moved
-    const movedTodo = filteredTodos[fromIndex];
-    
-    // Remove the moved todo from filtered list
-    const newFilteredTodos = [...filteredTodos];
-    newFilteredTodos.splice(fromIndex, 1);
-    newFilteredTodos.splice(toIndex, 0, movedTodo);
-    
-    // Update the full todos list maintaining the new order for filtered items
-    const updatedTodos = allTodos.map(todo => {
-      const filteredIndex = newFilteredTodos.findIndex(ft => ft.id === todo.id);
-      return filteredIndex >= 0 ? newFilteredTodos[filteredIndex] : todo;
+  private toggleExpandedRecursive(todos: Todo[], id: string): Todo[] {
+    return todos.map(todo => {
+      if (todo.id === id) {
+        return { ...todo, isExpanded: !todo.isExpanded };
+      }
+      if (todo.subtasks.length > 0) {
+        const updatedSubtasks = this.toggleExpandedRecursive(todo.subtasks, id);
+        if (updatedSubtasks !== todo.subtasks) {
+          return { ...todo, subtasks: updatedSubtasks };
+        }
+      }
+      return todo;
     });
-    
-    this.todosSignal.set(updatedTodos);
+  }
+
+  reorderTodos(todoIds: string[]): void {
+    this.todosSignal.update(todos => {
+      const todoMap = new Map(todos.map(t => [t.id, t]));
+      const reorderedTodos = todoIds.map((id, index) => {
+        const todo = todoMap.get(id)!;
+        return { ...todo, order: index };
+      });
+
+      const reorderedIds = new Set(reorderedTodos.map(t => t.id));
+      const remainingTodos = todos.filter(t => !reorderedIds.has(t.id));
+
+      return [...reorderedTodos, ...remainingTodos];
+    });
     this.saveTodos();
+  }
+
+  reorderSubtasks(parentId: string, subtaskIds: string[]): void {
+    this.todosSignal.update(todos => {
+      return this.reorderSubtasksRecursive(todos, parentId, subtaskIds);
+    });
+    this.saveTodos();
+  }
+
+  private reorderSubtasksRecursive(todos: Todo[], parentId: string, subtaskIds: string[]): Todo[] {
+    return todos.map(todo => {
+      if (todo.id === parentId) {
+        // Found the parent, reorder its direct subtasks
+        const subtaskMap = new Map(todo.subtasks.map(s => [s.id, s]));
+        const reorderedSubtasks = subtaskIds.map((id, index) => {
+          const subtask = subtaskMap.get(id);
+          if (subtask) {
+            return { ...subtask, order: index };
+          }
+          return subtask;
+        }).filter(Boolean) as Todo[];
+        
+        return { 
+          ...todo, 
+          subtasks: reorderedSubtasks,
+          updatedAt: new Date()
+        };
+      }
+      
+      // Check if this todo has subtasks and recursively search
+      if (todo.subtasks.length > 0) {
+        const updatedSubtasks = this.reorderSubtasksRecursive(todo.subtasks, parentId, subtaskIds);
+        if (updatedSubtasks !== todo.subtasks) {
+          return { 
+            ...todo, 
+            subtasks: updatedSubtasks,
+            updatedAt: new Date()
+          };
+        }
+      }
+      
+      return todo;
+    });
   }
 
   setFilter(filter: FilterType): void {
@@ -262,35 +360,67 @@ export class TodoService {
   }
 
   clearCompleted(): void {
-    this.todosSignal.update(todos => todos.filter(todo => !todo.completed));
+    this.todosSignal.update(todos => this.clearCompletedRecursive(todos));
     this.saveTodos();
+  }
+
+  private clearCompletedRecursive(todos: Todo[]): Todo[] {
+    return todos
+      .filter(todo => !todo.completed)
+      .map(todo => ({
+        ...todo,
+        subtasks: this.clearCompletedRecursive(todo.subtasks)
+      }));
+  }
+
+  private updateTodoRecursive(todos: Todo[], id: string, updates: Partial<Todo>): Todo[] {
+    return todos.map(todo => {
+      if (todo.id === id) {
+        return { ...todo, ...updates, updatedAt: new Date() };
+      }
+      if (todo.subtasks.length > 0) {
+        const updatedSubtasks = this.updateTodoRecursive(todo.subtasks, id, updates);
+        if (updatedSubtasks !== todo.subtasks) {
+          return { ...todo, subtasks: updatedSubtasks, updatedAt: new Date() };
+        }
+      }
+      return todo;
+    });
+  }
+
+  private findTodoById(todos: Todo[], id: string): Todo | undefined {
+    for (const todo of todos) {
+      if (todo.id === id) {
+        return todo;
+      }
+      if (todo.subtasks.length > 0) {
+        const foundInSubtasks = this.findTodoById(todo.subtasks, id);
+        if (foundInSubtasks) {
+          return foundInSubtasks;
+        }
+      }
+    }
+    return undefined;
   }
 
   private generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 
-  private saveTodos(): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.todosSignal()));
+  private async saveTodos(): Promise<void> {
+    try {
+      await this.indexedDBService.saveTodos(this.todosSignal());
+    } catch (error) {
+      console.error('Error saving todos to IndexedDB:', error);
+    }
   }
 
-  private loadTodos(): void {
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    if (stored) {
-      try {
-        const todos = JSON.parse(stored).map((todo: any) => ({
-          ...todo,
-          createdAt: new Date(todo.createdAt),
-          updatedAt: new Date(todo.updatedAt),
-          dueDate: todo.dueDate ? new Date(todo.dueDate) : undefined,
-          subtasks: todo.subtasks || [],
-          isExpanded: todo.isExpanded ?? false,
-          order: todo.order || 0
-        }));
-        this.todosSignal.set(todos);
-      } catch (error) {
-        console.error('Error loading todos from localStorage:', error);
-      }
+  private async loadTodos(): Promise<void> {
+    try {
+      const todos = await this.indexedDBService.loadTodos();
+      this.todosSignal.set(todos);
+    } catch (error) {
+      console.error('Error loading todos from IndexedDB:', error);
     }
   }
 }

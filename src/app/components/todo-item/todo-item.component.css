@@ -235,9 +235,6 @@
   font-weight: 400;
 }
 
-.subtasks .add-subtask {
-  display: none;
-}
 
 /* Responsive */
 @media (max-width: 768px) {
