@@ -26,6 +26,14 @@ import { ProjectService } from './services/project.service';
         </div>
         
         <nav class="sidebar-nav">
+          <a routerLink="/calendar" 
+             routerLinkActive="active" 
+             class="nav-item"
+             (click)="closeSidebarOnMobile()">
+            <span class="nav-icon">&#x1F4C5;</span>
+            Calendar
+          </a>
+
           <div class="nav-section">
             <div class="nav-item-with-toggle">
               <button class="nav-toggle" (click)="toggleProjectsExpanded()">
