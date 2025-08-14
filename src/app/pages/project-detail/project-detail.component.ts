@@ -91,7 +91,9 @@ import { ConfirmationService } from '../../services/confirmation.service';
             <app-todo-item
               *ngFor="let todo of filteredTodos(); trackBy: trackByTodoId"
               cdkDrag
+              [cdkDragDisabled]="isDraggingDisabled"
               [todo]="todo"
+              (edit)="onEdit($event)"
               (toggle)="onToggleTodo($event)"
               (update)="onUpdateTodo($event)"
               (delete)="onDeleteTodo($event)"
@@ -172,6 +174,7 @@ import { ConfirmationService } from '../../services/confirmation.service';
 export class ProjectDetailComponent implements OnInit {
   @ViewChild('taskEditor') taskEditor!: TaskEditorComponent;
   editingTodo: Todo | null = null;
+  isDraggingDisabled = false;
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -341,9 +344,14 @@ export class ProjectDetailComponent implements OnInit {
     }
   }
 
+  onEdit(isEditing: boolean): void {
+    this.isDraggingDisabled = isEditing;
+  }
+
   onShowAddTaskForm(): void {
     this.editingTodo = null;
     this.taskEditor.open();
+    this.isDraggingDisabled = true;
   }
 
   onSaveTask(updates: Partial<Todo>): void {
@@ -366,6 +374,7 @@ export class ProjectDetailComponent implements OnInit {
 
   closeEditor(): void {
     this.editingTodo = null;
+    this.isDraggingDisabled = false;
   }
 
   trackByTodoId(index: number, todo: Todo): string {

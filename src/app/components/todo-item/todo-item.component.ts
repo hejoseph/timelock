@@ -119,6 +119,7 @@ export class TodoItemComponent {
   @Output() addSubtaskEvent = new EventEmitter<{ parentId: string; subtaskData: Partial<Todo> }>();
   @Output() toggleExpanded = new EventEmitter<string>();
   @Output() subtaskDrop = new EventEmitter<{ parentId: string; event: CdkDragDrop<Todo[]> }>();
+  @Output() edit = new EventEmitter<boolean>();
 
   @ViewChild('taskEditor') taskEditor!: TaskEditorComponent;
 
@@ -142,10 +143,12 @@ export class TodoItemComponent {
   openEditor(): void {
     this.editingTodo = this.todo;
     this.taskEditor.open();
+    this.edit.emit(true);
   }
 
   closeEditor(): void {
     this.editingTodo = null;
+    this.edit.emit(false);
   }
 
   onSaveTask(updates: Partial<Todo>): void {
