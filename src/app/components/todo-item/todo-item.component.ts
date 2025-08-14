@@ -129,10 +129,10 @@ export class TodoItemComponent {
   }
 
   onDelete(): void {
-    const taskType = this.isSubtask ? 'subtask' : 'task';
-    if (confirm(`Are you sure you want to delete this ${taskType}?`)) {
-      this.delete.emit(this.todo.id);
-    }
+    // const taskType = this.isSubtask ? 'subtask' : 'task';
+    // if (confirm(`Are you sure you want to delete this ${taskType}?`)) {
+    this.delete.emit(this.todo.id);
+    // }
   }
 
   onToggleExpanded(): void {

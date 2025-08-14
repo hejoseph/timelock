@@ -9,6 +9,8 @@ import { TodoFiltersComponent } from '../../components/todo-filters/todo-filters
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Todo, FilterType, SortType } from '../../models/todo.model';
 
+import { ConfirmationService } from '../../services/confirmation.service';
+
 @Component({
   selector: 'app-project-detail',
   standalone: true,
@@ -163,6 +165,7 @@ export class ProjectDetailComponent implements OnInit {
   private router = inject(Router);
   private projectService = inject(ProjectService);
   private todoService = inject(TodoService);
+  private confirmationService = inject(ConfirmationService);
 
   projectId = computed(() => this.route.snapshot.paramMap.get('id'));
   project = computed(() => {
@@ -289,8 +292,18 @@ export class ProjectDetailComponent implements OnInit {
     this.todoService.updateTodo(data.id, data.updates);
   }
 
-  onDeleteTodo(id: string): void {
-    this.todoService.deleteTodo(id);
+  async onDeleteTodo(id: string): Promise<void> {
+    const todo = this.findTodoByIdInProject(id);
+    if (!todo) return;
+
+    const confirmed = await this.confirmationService.open(
+      'Delete Task',
+      `Are you sure you want to delete "${todo.title}"? This will also delete all its subtasks.`
+    );
+
+    if (confirmed) {
+      this.todoService.deleteTodo(id);
+    }
   }
 
   onFilterChange(filter: FilterType): void {
