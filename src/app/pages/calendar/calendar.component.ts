@@ -6,7 +6,7 @@ import { ProjectService } from '../../services/project.service';
 import { Todo } from '../../models/todo.model';
 import { TaskEditorComponent } from '../../components/task-editor/task-editor.component';
 
-type CalendarView = 'today' | 'week';
+type CalendarView = 'today' | 'week' | 'month';
 
 @Component({
   selector: 'app-calendar',
@@ -28,6 +28,12 @@ type CalendarView = 'today' | 'week';
             [class.active]="currentView() === 'week'"
             (click)="setView('week')">
             Week
+          </button>
+          <button 
+            class="view-btn" 
+            [class.active]="currentView() === 'month'"
+            (click)="setView('month')">
+            Month
           </button>
         </div>
       </header>
@@ -143,6 +149,53 @@ type CalendarView = 'today' | 'week';
           </div>
         </div>
       </div>
+
+      <!-- Month View -->
+      <div *ngIf="currentView() === 'month'" class="month-view">
+        <div class="month-header">
+          <h2>{{ getMonthYear() }}</h2>
+          <div class="date-navigation">
+            <button class="nav-btn" (click)="previousMonth()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M9.707 4.293a1 1 0 010 1.414L7.414 8l2.293 2.293a1 1 0 01-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0z"/>
+              </svg>
+            </button>
+            <button class="nav-btn" (click)="goToCurrentMonth()">This Month</button>
+            <button class="nav-btn" (click)="nextMonth()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M6.293 4.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L8.586 8 6.293 5.707a1 1 0 010-1.414z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="month-grid">
+          <div class="month-weekdays">
+            <div class="weekday-header" *ngFor="let day of weekdayNames">{{ day }}</div>
+          </div>
+          <div class="month-days">
+            <div *ngFor="let day of monthDays()" 
+                 class="month-day" 
+                 [class.other-month]="!day.isCurrentMonth"
+                 [class.today]="isToday(day.date)">
+              <div class="day-number">{{ day.date.getDate() }}</div>
+              <div class="day-tasks-month">
+                <div *ngFor="let task of getTasksForDate(day.date); let i = index" 
+                     class="task-dot" 
+                     [class.completed]="task.completed"
+                     [class]="'priority-' + task.priority"
+                     [title]="getTaskTooltip(task)"
+                     (click)="editTask(task)">
+                  <span class="task-dot-text" *ngIf="i < 3">{{ task.title.substring(0, 15) }}{{ task.title.length > 15 ? '...' : '' }}</span>
+                </div>
+                <div *ngIf="getTasksForDate(day.date).length > 3" class="more-tasks">
+                  +{{ getTasksForDate(day.date).length - 3 }} more
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Task Editor Modal -->
@@ -174,6 +227,9 @@ export class CalendarComponent {
 
   private weekStartSignal = signal(this.getStartOfWeek(new Date()));
   weekStart = this.weekStartSignal.asReadonly();
+
+  private monthSignal = signal(new Date());
+  month = this.monthSignal.asReadonly();
 
   // Get todos that have scheduling information
   scheduledTodos = computed(() => 
@@ -229,6 +285,42 @@ export class CalendarComponent {
     return days;
   });
 
+  // Month days for month view
+  monthDays = computed(() => {
+    const currentMonth = this.month();
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    
+    // First day of the month
+    const firstDay = new Date(year, month, 1);
+    // Last day of the month
+    const lastDay = new Date(year, month + 1, 0);
+    
+    // Start from the beginning of the week containing the first day
+    const startDate = new Date(firstDay);
+    startDate.setDate(firstDay.getDate() - firstDay.getDay());
+    
+    // End at the end of the week containing the last day
+    const endDate = new Date(lastDay);
+    endDate.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
+    
+    const days = [];
+    const current = new Date(startDate);
+    
+    while (current <= endDate) {
+      days.push({
+        date: new Date(current),
+        isCurrentMonth: current.getMonth() === month
+      });
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return days;
+  });
+
+  // Weekday names for month header
+  weekdayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
   // View controls
   setView(view: CalendarView): void {
     this.currentViewSignal.set(view);
@@ -271,6 +363,24 @@ export class CalendarComponent {
     this.weekStartSignal.set(this.getStartOfWeek(new Date()));
   }
 
+  previousMonth(): void {
+    const current = this.month();
+    const previous = new Date(current);
+    previous.setMonth(current.getMonth() - 1);
+    this.monthSignal.set(previous);
+  }
+
+  nextMonth(): void {
+    const current = this.month();
+    const next = new Date(current);
+    next.setMonth(current.getMonth() + 1);
+    this.monthSignal.set(next);
+  }
+
+  goToCurrentMonth(): void {
+    this.monthSignal.set(new Date());
+  }
+
   formatDate(date: Date): string {
     return date.toLocaleDateString('en-US', { 
       weekday: 'long', 
@@ -289,6 +399,13 @@ export class CalendarComponent {
     const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     
     return `${startStr} - ${endStr}`;
+  }
+
+  getMonthYear(): string {
+    return this.month().toLocaleDateString('en-US', { 
+      month: 'long', 
+      year: 'numeric' 
+    });
   }
 
   // Task operations
@@ -441,6 +558,24 @@ export class CalendarComponent {
     }
     
     return `${hours}h ${remainingMinutes}m`;
+  }
+
+  // Get task tooltip for month view
+  getTaskTooltip(task: Todo): string {
+    let tooltip = task.title;
+    
+    if (task.startDateTime || task.dueDate) {
+      const time = this.getTaskDisplayTime(task);
+      if (time) {
+        tooltip += ` (${time})`;
+      }
+    }
+    
+    if (task.description) {
+      tooltip += ` - ${task.description}`;
+    }
+    
+    return tooltip;
   }
 
   // Project helpers
