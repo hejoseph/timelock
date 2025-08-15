@@ -377,6 +377,20 @@ export class CalendarComponent {
         hour12: true 
       });
     }
+    // If no start time but has due date, show due time
+    if (task.dueDate) {
+      const date = new Date(task.dueDate);
+      // Only show time if it's not midnight (indicating a specific time was set)
+      if (date.getHours() !== 0 || date.getMinutes() !== 0) {
+        return `Due: ${date.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        })}`;
+      } else {
+        return 'Due today';
+      }
+    }
     return null;
   }
 
@@ -396,6 +410,19 @@ export class CalendarComponent {
         hour12: true 
       });
       return `${startTime} - ${endTime}`;
+    }
+    // Show due date info if no start/end times
+    if (task.dueDate && !task.startDateTime && !task.endDateTime) {
+      const date = new Date(task.dueDate);
+      if (date.getHours() !== 0 || date.getMinutes() !== 0) {
+        return `Due at ${date.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        })}`;
+      } else {
+        return 'Due today';
+      }
     }
     return null;
   }
