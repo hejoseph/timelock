@@ -1,16 +1,17 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TodoService } from '../../services/todo.service';
 import { ProjectService } from '../../services/project.service';
 import { Todo } from '../../models/todo.model';
+import { TaskEditorComponent } from '../../components/task-editor/task-editor.component';
 
 type CalendarView = 'today' | 'week';
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, TaskEditorComponent],
   template: `
     <div class="calendar-container">
       <header class="calendar-header">
@@ -57,7 +58,7 @@ type CalendarView = 'today' | 'week';
             <p>Your day is free! Consider adding some tasks or enjoy the break.</p>
           </div>
 
-          <div *ngFor="let task of tasksForToday()" class="task-card" [class.completed]="task.completed">
+          <div *ngFor="let task of tasksForToday()" class="task-card" [class.completed]="task.completed" (click)="editTask(task)">
             <div class="task-time" *ngIf="getTaskDisplayTime(task)">
               {{ getTaskDisplayTime(task) }}
             </div>
@@ -78,9 +79,17 @@ type CalendarView = 'today' | 'week';
               </div>
               <h3 class="task-title" [class.completed]="task.completed">{{ task.title }}</h3>
               <p class="task-description" *ngIf="task.description">{{ task.description }}</p>
-              <div class="task-actions">
+              <div class="task-duration" *ngIf="task.duration" title="Duration">
+                🕒 {{ formatDuration(task.duration) }}
+              </div>
+              <div class="task-actions" (click)="$event.stopPropagation()">
                 <button class="action-btn" (click)="toggleTask(task.id)">
                   {{ task.completed ? 'Mark Incomplete' : 'Mark Complete' }}
+                </button>
+                <button class="action-btn edit-btn" (click)="editTask(task)" title="Edit task">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.927-.928l.929-3.25a1.75 1.75 0 01.445-.758l8.61-8.61z"/>
+                  </svg>
                 </button>
                 <a [routerLink]="['/project', task.projectId!]" class="action-btn secondary">
                   View Project
@@ -120,21 +129,29 @@ type CalendarView = 'today' | 'week';
               <div *ngIf="getTasksForDate(day.date).length === 0" class="no-tasks-small">
                 No tasks
               </div>
-              <div *ngFor="let task of getTasksForDate(day.date)" 
-                   class="task-item-small" 
-                   [class.completed]="task.completed"
-                   [style.border-left-color]="getProjectColor(task.projectId!)">
+              <div *ngFor="let task of getTasksForDate(day.date)" class="task-item-small" [class.completed]="task.completed" (click)="editTask(task)">
                 <div class="task-time-small" *ngIf="getTaskDisplayTime(task)">
                   {{ getTaskDisplayTime(task) }}
                 </div>
-                <div class="task-title-small">{{ task.title }}</div>
+                <div class="task-title-small" [class.completed]="task.completed">{{ task.title }}</div>
                 <div class="task-project-small">{{ getProjectName(task.projectId!) }}</div>
+                <div class="task-duration-small" *ngIf="task.duration" title="Duration">
+                  🕒 {{ formatDuration(task.duration) }}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Task Editor Modal -->
+    <app-task-editor
+      #taskEditor
+      [todo]="editingTask"
+      (save)="onSaveTask($event)"
+      (close)="closeEditor()">
+    </app-task-editor>
   `,
   styleUrls: ['./calendar.component.css']
 })
@@ -142,16 +159,26 @@ export class CalendarComponent {
   private todoService = inject(TodoService);
   private projectService = inject(ProjectService);
 
-  currentView = signal<CalendarView>('today');
-  today = signal(new Date());
-  weekStart = signal(this.getWeekStart(new Date()));
+  @ViewChild('taskEditor') taskEditor!: TaskEditorComponent;
 
-  // Get all todos with scheduled times (start/end) or due dates
+  // Current view state
+  private currentViewSignal = signal<CalendarView>('today');
+  currentView = this.currentViewSignal.asReadonly();
+
+  // Task editing state
+  editingTask: Todo | null = null;
+
+  // Date navigation state
+  private todaySignal = signal(new Date());
+  today = this.todaySignal.asReadonly();
+
+  private weekStartSignal = signal(this.getStartOfWeek(new Date()));
+  weekStart = this.weekStartSignal.asReadonly();
+
+  // Get todos that have scheduling information
   scheduledTodos = computed(() => 
     this.todoService.todos().filter(todo => 
-      (todo.startDateTime || todo.endDateTime || todo.dueDate) && 
-      !todo.archived && 
-      todo.projectId
+      !todo.archived && (todo.startDateTime || todo.endDateTime || todo.dueDate)
     )
   );
 
@@ -161,7 +188,7 @@ export class CalendarComponent {
     return this.scheduledTodos().filter(todo => 
       this.isTaskOnDate(todo, todayDate)
     ).sort((a, b) => {
-      // Sort by start time, then due date, then end time, then priority
+      // Sort by start time, then end time, then priority
       const startA = a.startDateTime ? new Date(a.startDateTime) : null;
       const startB = b.startDateTime ? new Date(b.startDateTime) : null;
       
@@ -170,15 +197,6 @@ export class CalendarComponent {
       }
       if (startA && !startB) return -1;
       if (!startA && startB) return 1;
-
-      const dueA = a.dueDate ? new Date(a.dueDate) : null;
-      const dueB = b.dueDate ? new Date(b.dueDate) : null;
-
-      if (dueA && dueB) {
-        return dueA.getTime() - dueB.getTime();
-      }
-      if (dueA && !dueB) return -1;
-      if (!dueA && dueB) return 1;
       
       // If no start times, sort by end time
       const endA = a.endDateTime ? new Date(a.endDateTime) : null;
@@ -204,56 +222,55 @@ export class CalendarComponent {
       const date = new Date(start);
       date.setDate(start.getDate() + i);
       days.push({
-        name: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        date: date
+        date,
+        name: date.toLocaleDateString('en-US', { weekday: 'short' })
       });
     }
     return days;
   });
 
-  setView(view: CalendarView) {
-    this.currentView.set(view);
+  // View controls
+  setView(view: CalendarView): void {
+    this.currentViewSignal.set(view);
   }
 
-  // Today view navigation
-  previousDay() {
+  // Date navigation
+  previousDay(): void {
     const current = this.today();
     const previous = new Date(current);
     previous.setDate(current.getDate() - 1);
-    this.today.set(previous);
+    this.todaySignal.set(previous);
   }
 
-  nextDay() {
+  nextDay(): void {
     const current = this.today();
     const next = new Date(current);
     next.setDate(current.getDate() + 1);
-    this.today.set(next);
+    this.todaySignal.set(next);
   }
 
-  goToToday() {
-    this.today.set(new Date());
+  goToToday(): void {
+    this.todaySignal.set(new Date());
   }
 
-  // Week view navigation
-  previousWeek() {
+  previousWeek(): void {
     const current = this.weekStart();
     const previous = new Date(current);
     previous.setDate(current.getDate() - 7);
-    this.weekStart.set(previous);
+    this.weekStartSignal.set(previous);
   }
 
-  nextWeek() {
+  nextWeek(): void {
     const current = this.weekStart();
     const next = new Date(current);
     next.setDate(current.getDate() + 7);
-    this.weekStart.set(next);
+    this.weekStartSignal.set(next);
   }
 
-  goToCurrentWeek() {
-    this.weekStart.set(this.getWeekStart(new Date()));
+  goToCurrentWeek(): void {
+    this.weekStartSignal.set(this.getStartOfWeek(new Date()));
   }
 
-  // Helper methods
   formatDate(date: Date): string {
     return date.toLocaleDateString('en-US', { 
       weekday: 'long', 
@@ -274,30 +291,34 @@ export class CalendarComponent {
     return `${startStr} - ${endStr}`;
   }
 
-  isToday(date: Date): boolean {
-    return this.isSameDay(date, new Date());
+  // Task operations
+  toggleTask(taskId: string): void {
+    this.todoService.toggleTodo(taskId);
   }
 
-  isSameDay(date1: Date, date2: Date): boolean {
-    return date1.getFullYear() === date2.getFullYear() &&
-           date1.getMonth() === date2.getMonth() &&
-           date1.getDate() === date2.getDate();
+  // Task editing methods
+  editTask(task: Todo): void {
+    this.editingTask = task;
+    this.taskEditor.open();
   }
 
-  getWeekStart(date: Date): Date {
-    const start = new Date(date);
-    const day = start.getDay();
-    const diff = start.getDate() - day; // Sunday = 0
-    start.setDate(diff);
-    start.setHours(0, 0, 0, 0);
-    return start;
+  onSaveTask(updates: Partial<Todo>): void {
+    if (this.editingTask) {
+      this.todoService.updateTodo(this.editingTask.id, updates);
+    }
+    this.closeEditor();
   }
 
+  closeEditor(): void {
+    this.editingTask = null;
+  }
+
+  // Get tasks for a specific date (week view)
   getTasksForDate(date: Date): Todo[] {
     return this.scheduledTodos().filter(todo => 
       this.isTaskOnDate(todo, date)
     ).sort((a, b) => {
-      // Sort by start time, then due date, then end time, then priority
+      // Sort by start time, then end time, then priority
       const startA = a.startDateTime ? new Date(a.startDateTime) : null;
       const startB = b.startDateTime ? new Date(b.startDateTime) : null;
       
@@ -306,15 +327,6 @@ export class CalendarComponent {
       }
       if (startA && !startB) return -1;
       if (!startA && startB) return 1;
-
-      const dueA = a.dueDate ? new Date(a.dueDate) : null;
-      const dueB = b.dueDate ? new Date(b.dueDate) : null;
-
-      if (dueA && dueB) {
-        return dueA.getTime() - dueB.getTime();
-      }
-      if (dueA && !dueB) return -1;
-      if (!dueA && dueB) return 1;
       
       // If no start times, sort by end time
       const endA = a.endDateTime ? new Date(a.endDateTime) : null;
@@ -355,8 +367,8 @@ export class CalendarComponent {
     return false;
   }
 
-  // Get task start time for sorting
-  getTaskStartTime(task: Todo): string | null {
+  // Get display time for task cards
+  getTaskDisplayTime(task: Todo): string | null {
     if (task.startDateTime) {
       const date = new Date(task.startDateTime);
       return date.toLocaleTimeString('en-US', { 
@@ -368,91 +380,76 @@ export class CalendarComponent {
     return null;
   }
 
-  // Get display time for task cards
-  getTaskDisplayTime(task: Todo): string | null {
-    if (task.startDateTime) {
-      const start = new Date(task.startDateTime);
-      return start.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      });
-    }
-    // Fallback to old due date logic
-    return this.getTaskTime(task);
-  }
-
-  // Get time range for detailed view
+  // Get time range display
   getTaskTimeRange(task: Todo): string | null {
     if (task.startDateTime && task.endDateTime) {
       const start = new Date(task.startDateTime);
       const end = new Date(task.endDateTime);
-      
       const startTime = start.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
         minute: '2-digit',
         hour12: true 
       });
-      
       const endTime = end.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
         minute: '2-digit',
         hour12: true 
       });
-      
-      // Check if it's the same day
-      if (this.isSameDay(start, end)) {
-        return `${startTime} - ${endTime}`;
-      } else {
-        const endDate = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        return `${startTime} - ${endDate} ${endTime}`;
-      }
+      return `${startTime} - ${endTime}`;
     }
-    
-    if (task.startDateTime) {
-      const start = new Date(task.startDateTime);
-      return start.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      });
-    }
-    
     return null;
   }
 
-  getTaskTime(task: Todo): string | null {
-    if (!task.dueDate) return null;
-    const date = new Date(task.dueDate);
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
+  // Format duration for display
+  formatDuration(minutes: number): string {
+    if (minutes < 60) {
+      return `${minutes}m`;
+    }
     
-    // Only show time if it's not midnight (00:00)
-    if (hours === 0 && minutes === 0) return null;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
     
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    });
+    if (remainingMinutes === 0) {
+      return `${hours}h`;
+    }
+    
+    return `${hours}h ${remainingMinutes}m`;
   }
 
+  // Project helpers
   getProjectName(projectId: string): string {
-    const project = this.projectService.getProjectById(projectId);
-    return project?.name || 'Unknown Project';
+    const project = this.projectService.projects().find(p => p.id === projectId);
+    return project?.name || 'No Project';
   }
 
   getProjectColor(projectId: string): string {
-    const project = this.projectService.getProjectById(projectId);
+    const project = this.projectService.projects().find(p => p.id === projectId);
     return project?.color || '#6b7280';
   }
 
   getProjectIcon(projectId: string): string {
-    const project = this.projectService.getProjectById(projectId);
+    const project = this.projectService.projects().find(p => p.id === projectId);
     return project?.icon || '📋';
   }
 
-  toggleTask(taskId: string) {
-    this.todoService.toggleTodo(taskId);
+  // Utility methods
+  isToday(date: Date): boolean {
+    const today = new Date();
+    return this.isSameDay(date, today);
+  }
+
+  isSameDay(date1: Date, date2: Date): boolean {
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getDate() === date2.getDate();
+  }
+
+  private getStartOfWeek(date: Date): Date {
+    const start = new Date(date);
+    const day = start.getDay();
+    const diff = start.getDate() - day;
+    start.setDate(diff);
+    start.setHours(0, 0, 0, 0);
+    return start;
   }
 }
