@@ -161,15 +161,36 @@ export class CalendarComponent {
     return this.scheduledTodos().filter(todo => 
       this.isTaskOnDate(todo, todayDate)
     ).sort((a, b) => {
-      // Sort by start time, then end time, then priority
-      const startA = this.getTaskStartTime(a);
-      const startB = this.getTaskStartTime(b);
+      // Sort by start time, then due date, then end time, then priority
+      const startA = a.startDateTime ? new Date(a.startDateTime) : null;
+      const startB = b.startDateTime ? new Date(b.startDateTime) : null;
+      
       if (startA && startB) {
-        return startA.localeCompare(startB);
+        return startA.getTime() - startB.getTime();
       }
       if (startA && !startB) return -1;
       if (!startA && startB) return 1;
+
+      const dueA = a.dueDate ? new Date(a.dueDate) : null;
+      const dueB = b.dueDate ? new Date(b.dueDate) : null;
+
+      if (dueA && dueB) {
+        return dueA.getTime() - dueB.getTime();
+      }
+      if (dueA && !dueB) return -1;
+      if (!dueA && dueB) return 1;
       
+      // If no start times, sort by end time
+      const endA = a.endDateTime ? new Date(a.endDateTime) : null;
+      const endB = b.endDateTime ? new Date(b.endDateTime) : null;
+      
+      if (endA && endB) {
+        return endA.getTime() - endB.getTime();
+      }
+      if (endA && !endB) return -1;
+      if (!endA && endB) return 1;
+      
+      // Finally sort by priority
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       return priorityOrder[a.priority] - priorityOrder[b.priority];
     });
@@ -276,14 +297,36 @@ export class CalendarComponent {
     return this.scheduledTodos().filter(todo => 
       this.isTaskOnDate(todo, date)
     ).sort((a, b) => {
-      const startA = this.getTaskStartTime(a);
-      const startB = this.getTaskStartTime(b);
+      // Sort by start time, then due date, then end time, then priority
+      const startA = a.startDateTime ? new Date(a.startDateTime) : null;
+      const startB = b.startDateTime ? new Date(b.startDateTime) : null;
+      
       if (startA && startB) {
-        return startA.localeCompare(startB);
+        return startA.getTime() - startB.getTime();
       }
       if (startA && !startB) return -1;
       if (!startA && startB) return 1;
+
+      const dueA = a.dueDate ? new Date(a.dueDate) : null;
+      const dueB = b.dueDate ? new Date(b.dueDate) : null;
+
+      if (dueA && dueB) {
+        return dueA.getTime() - dueB.getTime();
+      }
+      if (dueA && !dueB) return -1;
+      if (!dueA && dueB) return 1;
       
+      // If no start times, sort by end time
+      const endA = a.endDateTime ? new Date(a.endDateTime) : null;
+      const endB = b.endDateTime ? new Date(b.endDateTime) : null;
+      
+      if (endA && endB) {
+        return endA.getTime() - endB.getTime();
+      }
+      if (endA && !endB) return -1;
+      if (!endA && endB) return 1;
+      
+      // Finally sort by priority
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       return priorityOrder[a.priority] - priorityOrder[b.priority];
     });
