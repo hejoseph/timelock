@@ -329,6 +329,17 @@
   font-weight: 700;
   color: #1f2937;
   margin-top: 4px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.day-number:hover {
+  background: #3b82f6;
+  color: white;
+  transform: scale(1.1);
 }
 
 .day-column.today .day-number {
@@ -542,6 +553,17 @@
   font-size: 0.875rem;
   color: #374151;
   margin-bottom: 4px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.day-number:hover {
+  background: #3b82f6;
+  color: white;
+  transform: scale(1.1);
 }
 
 .day-tasks-month {

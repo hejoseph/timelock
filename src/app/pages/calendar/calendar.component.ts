@@ -129,7 +129,7 @@ type CalendarView = 'today' | 'week' | 'month';
           <div *ngFor="let day of weekDays()" class="day-column" [class.today]="isToday(day.date)">
             <div class="day-header">
               <div class="day-name">{{ day.name }}</div>
-              <div class="day-number">{{ day.date.getDate() }}</div>
+              <div class="day-number" (click)="jumpToDay(day.date)" title="View this day">{{ day.date.getDate() }}</div>
             </div>
             <div class="day-tasks">
               <div *ngIf="getTasksForDate(day.date).length === 0" class="no-tasks-small">
@@ -178,7 +178,7 @@ type CalendarView = 'today' | 'week' | 'month';
                  class="month-day" 
                  [class.other-month]="!day.isCurrentMonth"
                  [class.today]="isToday(day.date)">
-              <div class="day-number">{{ day.date.getDate() }}</div>
+              <div class="day-number" (click)="jumpToDay(day.date)" title="View this day">{{ day.date.getDate() }}</div>
               <div class="day-tasks-month">
                 <div *ngFor="let task of getTasksForDate(day.date); let i = index" 
                      class="task-dot" 
@@ -379,6 +379,13 @@ export class CalendarComponent {
 
   goToCurrentMonth(): void {
     this.monthSignal.set(new Date());
+  }
+
+  jumpToDay(date: Date): void {
+    // Set the today signal to the clicked date
+    this.todaySignal.set(new Date(date));
+    // Switch to today view to show the detailed day view
+    this.setView('today');
   }
 
   formatDate(date: Date): string {
