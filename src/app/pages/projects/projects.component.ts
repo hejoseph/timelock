@@ -260,16 +260,25 @@ export class ProjectsComponent {
   }
 
   async deleteProject(project: Project): Promise<void> {
-    const confirmed = await this.confirmationService.open(
+    const result = await this.confirmationService.open(
       'Delete Project',
-      `Are you sure you want to delete "${project.name}"? This will also delete all tasks in this project.`
+      `Are you sure you want to delete "${project.name}"?`,
+      'Delete',
+      'Delete project and all tasks'
     );
 
-    if (confirmed) {
+    if (result === 'confirm') {
       try {
         await this.projectService.deleteProject(project.id);
       } catch (error) {
         console.error('Error deleting project:', error);
+      }
+    } else if (result === 'confirm_with_tasks') {
+      try {
+        await this.projectService.deleteProject(project.id);
+        await this.todoService.deleteTodosByProjectId(project.id);
+      } catch (error) {
+        console.error('Error deleting project and tasks:', error);
       }
     }
   }

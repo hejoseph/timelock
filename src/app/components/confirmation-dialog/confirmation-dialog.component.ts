@@ -13,6 +13,7 @@ import { CommonModule } from '@angular/common';
         <div class="dialog-actions">
           <button class="btn btn-secondary" (click)="cancel()">Cancel</button>
           <button class="btn btn-danger" (click)="confirm()">{{ confirmText }}</button>
+          <button class="btn btn-danger-outline" (click)="confirmWithTasks()">{{ confirmWithTasksText }}</button>
         </div>
       </div>
     </div>
@@ -23,9 +24,11 @@ export class ConfirmationDialogComponent {
   @Input() title = 'Are you sure?';
   @Input() message = 'This action cannot be undone.';
   @Input() confirmText = 'Delete';
+  @Input() confirmWithTasksText = 'Delete with tasks';
 
   @Output() onConfirm = new EventEmitter<void>();
   @Output() onCancel = new EventEmitter<void>();
+  @Output() onConfirmWithTasks = new EventEmitter<void>();
 
   confirm(): void {
     this.onConfirm.emit();
@@ -33,5 +36,9 @@ export class ConfirmationDialogComponent {
 
   cancel(): void {
     this.onCancel.emit();
+  }
+
+  confirmWithTasks(): void {
+    this.onConfirmWithTasks.emit();
   }
 }

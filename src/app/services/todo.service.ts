@@ -266,6 +266,11 @@ export class TodoService {
       }));
   }
 
+  deleteTodosByProjectId(projectId: string): void {
+    this.todosSignal.update(todos => todos.filter(todo => todo.projectId !== projectId));
+    this.saveTodos();
+  }
+
   toggleTodo(id: string): void {
     const todos = this.todosSignal();
     const todoToToggle = this.findTodoById(todos, id);

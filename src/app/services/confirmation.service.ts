@@ -7,15 +7,15 @@ import { ConfirmationDialogComponent } from '../components/confirmation-dialog/c
 })
 export class ConfirmationService {
   private componentRef: any;
-  private confirmationSubject!: Subject<boolean>;
+  private confirmationSubject!: Subject<string>;
 
   constructor(
     private injector: EnvironmentInjector,
     private appRef: ApplicationRef
   ) { }
 
-  open(title: string, message: string, confirmText: string = 'Delete'): Promise<boolean> {
-    this.confirmationSubject = new Subject<boolean>();
+  open(title: string, message: string, confirmText: string = 'Delete', confirmWithTasksText: string = 'Delete with tasks'): Promise<string> {
+    this.confirmationSubject = new Subject<string>();
 
     const hostElement = document.createElement('div');
     document.body.appendChild(hostElement);
@@ -28,15 +28,22 @@ export class ConfirmationService {
     componentRef.instance.title = title;
     componentRef.instance.message = message;
     componentRef.instance.confirmText = confirmText;
+    componentRef.instance.confirmWithTasksText = confirmWithTasksText;
 
     componentRef.instance.onConfirm.subscribe(() => {
-      this.confirmationSubject.next(true);
+      this.confirmationSubject.next('confirm');
       this.confirmationSubject.complete();
       this.destroyComponent(componentRef, hostElement);
     });
 
     componentRef.instance.onCancel.subscribe(() => {
-      this.confirmationSubject.next(false);
+      this.confirmationSubject.next('cancel');
+      this.confirmationSubject.complete();
+      this.destroyComponent(componentRef, hostElement);
+    });
+
+    componentRef.instance.onConfirmWithTasks.subscribe(() => {
+      this.confirmationSubject.next('confirm_with_tasks');
       this.confirmationSubject.complete();
       this.destroyComponent(componentRef, hostElement);
     });
@@ -44,7 +51,7 @@ export class ConfirmationService {
     this.appRef.attachView(componentRef.hostView);
     this.componentRef = componentRef;
 
-    return this.confirmationSubject.toPromise().then(value => value || false);
+    return this.confirmationSubject.toPromise().then(value => value || 'cancel');
   }
 
   private destroyComponent(componentRef: any, hostElement: HTMLElement): void {
