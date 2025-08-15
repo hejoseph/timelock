@@ -50,8 +50,8 @@ import { Todo } from '../../models/todo.model';
 
             <div class="form-group">
               <label class="form-label">Due Date</label>
-              <input type="date" 
-                     class="form-input date-input"
+              <input type="datetime-local" 
+                     class="form-input datetime-input"
                      [(ngModel)]="formData.dueDate"
                      name="dueDate"
                      [min]="today">

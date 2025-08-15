@@ -57,7 +57,7 @@
 }
 
 .todo-form.show {
-  max-height: 600px;
+  max-height: max-content;
   opacity: 1;
   padding: 20px;
   border-color: #cbd5e1;
