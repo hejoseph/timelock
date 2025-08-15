@@ -56,6 +56,29 @@ import { Todo } from '../../models/todo.model';
                      name="dueDate"
                      [min]="today">
             </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Start Date & Time</label>
+              <input type="datetime-local" 
+                     class="form-input datetime-input"
+                     [(ngModel)]="formData.startDateTime"
+                     name="startDateTime"
+                     [min]="todayDateTime">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">End Date & Time</label>
+              <input type="datetime-local" 
+                     class="form-input datetime-input"
+                     [(ngModel)]="formData.endDateTime"
+                     name="endDateTime"
+                     [min]="formData.startDateTime || todayDateTime">
+            </div>
+          </div>
+
+          <div class="form-row">
 
             <div class="form-group">
               <label class="form-label">Category</label>
@@ -103,12 +126,15 @@ export class TodoFormComponent {
   showForm = this.showFormSignal.asReadonly();
 
   today = new Date().toISOString().split('T')[0];
+  todayDateTime = new Date().toISOString().slice(0, 16);
 
   formData = {
     title: '',
     description: '',
     priority: 'medium' as Todo['priority'],
     dueDate: '',
+    startDateTime: '',
+    endDateTime: '',
     category: '',
     completed: false,
     archived: false
@@ -131,6 +157,8 @@ export class TodoFormComponent {
       archived: false,
       priority: this.formData.priority,
       dueDate: this.formData.dueDate ? new Date(this.formData.dueDate) : undefined,
+      startDateTime: this.formData.startDateTime ? new Date(this.formData.startDateTime) : undefined,
+      endDateTime: this.formData.endDateTime ? new Date(this.formData.endDateTime) : undefined,
       category: this.formData.category.trim() || undefined,
       isExpanded: false
     };
@@ -146,6 +174,8 @@ export class TodoFormComponent {
       description: '',
       priority: 'medium',
       dueDate: '',
+      startDateTime: '',
+      endDateTime: '',
       category: '',
       completed: false,
       archived: false

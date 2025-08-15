@@ -58,8 +58,8 @@ type CalendarView = 'today' | 'week';
           </div>
 
           <div *ngFor="let task of tasksForToday()" class="task-card" [class.completed]="task.completed">
-            <div class="task-time" *ngIf="getTaskTime(task)">
-              {{ getTaskTime(task) }}
+            <div class="task-time" *ngIf="getTaskDisplayTime(task)">
+              {{ getTaskDisplayTime(task) }}
             </div>
             <div class="task-content">
               <div class="task-header">
@@ -72,6 +72,9 @@ type CalendarView = 'today' | 'week';
                 <div class="task-priority" [class]="'priority-' + task.priority">
                   {{ task.priority }}
                 </div>
+              </div>
+              <div class="task-time-range" *ngIf="getTaskTimeRange(task)">
+                {{ getTaskTimeRange(task) }}
               </div>
               <h3 class="task-title" [class.completed]="task.completed">{{ task.title }}</h3>
               <p class="task-description" *ngIf="task.description">{{ task.description }}</p>
@@ -121,8 +124,8 @@ type CalendarView = 'today' | 'week';
                    class="task-item-small" 
                    [class.completed]="task.completed"
                    [style.border-left-color]="getProjectColor(task.projectId!)">
-                <div class="task-time-small" *ngIf="getTaskTime(task)">
-                  {{ getTaskTime(task) }}
+                <div class="task-time-small" *ngIf="getTaskDisplayTime(task)">
+                  {{ getTaskDisplayTime(task) }}
                 </div>
                 <div class="task-title-small">{{ task.title }}</div>
                 <div class="task-project-small">{{ getProjectName(task.projectId!) }}</div>
@@ -143,10 +146,12 @@ export class CalendarComponent {
   today = signal(new Date());
   weekStart = signal(this.getWeekStart(new Date()));
 
-  // Get all todos with due dates
+  // Get all todos with scheduled times (start/end) or due dates
   scheduledTodos = computed(() => 
     this.todoService.todos().filter(todo => 
-      todo.dueDate && !todo.archived && todo.projectId
+      (todo.startDateTime || todo.endDateTime || todo.dueDate) && 
+      !todo.archived && 
+      todo.projectId
     )
   );
 
@@ -154,14 +159,17 @@ export class CalendarComponent {
   tasksForToday = computed(() => {
     const todayDate = this.today();
     return this.scheduledTodos().filter(todo => 
-      this.isSameDay(new Date(todo.dueDate!), todayDate)
+      this.isTaskOnDate(todo, todayDate)
     ).sort((a, b) => {
-      // Sort by time if available, then by priority
-      const timeA = this.getTaskTime(a);
-      const timeB = this.getTaskTime(b);
-      if (timeA && timeB) {
-        return timeA.localeCompare(timeB);
+      // Sort by start time, then end time, then priority
+      const startA = this.getTaskStartTime(a);
+      const startB = this.getTaskStartTime(b);
+      if (startA && startB) {
+        return startA.localeCompare(startB);
       }
+      if (startA && !startB) return -1;
+      if (!startA && startB) return 1;
+      
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       return priorityOrder[a.priority] - priorityOrder[b.priority];
     });
@@ -266,16 +274,108 @@ export class CalendarComponent {
 
   getTasksForDate(date: Date): Todo[] {
     return this.scheduledTodos().filter(todo => 
-      todo.dueDate && this.isSameDay(new Date(todo.dueDate), date)
+      this.isTaskOnDate(todo, date)
     ).sort((a, b) => {
-      const timeA = this.getTaskTime(a);
-      const timeB = this.getTaskTime(b);
-      if (timeA && timeB) {
-        return timeA.localeCompare(timeB);
+      const startA = this.getTaskStartTime(a);
+      const startB = this.getTaskStartTime(b);
+      if (startA && startB) {
+        return startA.localeCompare(startB);
       }
+      if (startA && !startB) return -1;
+      if (!startA && startB) return 1;
+      
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       return priorityOrder[a.priority] - priorityOrder[b.priority];
     });
+  }
+
+  // Check if a task occurs on a specific date
+  isTaskOnDate(task: Todo, date: Date): boolean {
+    // Check start date
+    if (task.startDateTime && this.isSameDay(new Date(task.startDateTime), date)) {
+      return true;
+    }
+    // Check end date
+    if (task.endDateTime && this.isSameDay(new Date(task.endDateTime), date)) {
+      return true;
+    }
+    // Check if task spans multiple days and includes this date
+    if (task.startDateTime && task.endDateTime) {
+      const start = new Date(task.startDateTime);
+      const end = new Date(task.endDateTime);
+      return date >= start && date <= end;
+    }
+    // Fallback to due date
+    if (task.dueDate && this.isSameDay(new Date(task.dueDate), date)) {
+      return true;
+    }
+    return false;
+  }
+
+  // Get task start time for sorting
+  getTaskStartTime(task: Todo): string | null {
+    if (task.startDateTime) {
+      const date = new Date(task.startDateTime);
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    }
+    return null;
+  }
+
+  // Get display time for task cards
+  getTaskDisplayTime(task: Todo): string | null {
+    if (task.startDateTime) {
+      const start = new Date(task.startDateTime);
+      return start.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    }
+    // Fallback to old due date logic
+    return this.getTaskTime(task);
+  }
+
+  // Get time range for detailed view
+  getTaskTimeRange(task: Todo): string | null {
+    if (task.startDateTime && task.endDateTime) {
+      const start = new Date(task.startDateTime);
+      const end = new Date(task.endDateTime);
+      
+      const startTime = start.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+      
+      const endTime = end.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+      
+      // Check if it's the same day
+      if (this.isSameDay(start, end)) {
+        return `${startTime} - ${endTime}`;
+      } else {
+        const endDate = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `${startTime} - ${endDate} ${endTime}`;
+      }
+    }
+    
+    if (task.startDateTime) {
+      const start = new Date(task.startDateTime);
+      return start.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    }
+    
+    return null;
   }
 
   getTaskTime(task: Todo): string | null {

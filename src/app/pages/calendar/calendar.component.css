@@ -215,6 +215,17 @@
   color: #16a34a;
 }
 
+.task-time-range {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  display: inline-block;
+}
+
 .task-title {
   margin: 0 0 8px 0;
   font-size: 1.125rem;

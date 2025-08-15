@@ -6,6 +6,8 @@ export interface Todo {
   archived: boolean;
   priority: 'low' | 'medium' | 'high';
   dueDate?: Date;
+  startDateTime?: Date;
+  endDateTime?: Date;
   createdAt: Date;
   updatedAt: Date;
   category?: string;
