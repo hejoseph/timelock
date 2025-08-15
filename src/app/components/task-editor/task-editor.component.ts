@@ -63,6 +63,28 @@ import { Todo } from '../../models/todo.model';
             </div>
           </div>
 
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Start Date Time</label>
+              <input 
+                type="datetime-local" 
+                class="form-input"
+                [(ngModel)]="formData.startDateTime"
+                name="startDateTime"
+                [min]="today">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">End Date Time</label>
+              <input 
+                type="datetime-local" 
+                class="form-input"
+                [(ngModel)]="formData.endDateTime"
+                name="endDateTime"
+                [min]="formData.startDateTime || today">
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label">Category</label>
             <input 
@@ -117,6 +139,8 @@ export class TaskEditorComponent implements OnChanges {
     description: '',
     priority: 'medium' as Todo['priority'],
     dueDate: '',
+    startDateTime: '',
+    endDateTime: '',
     category: '',
     completed: false,
     archived: false
@@ -131,6 +155,8 @@ export class TaskEditorComponent implements OnChanges {
           description: this.todo.description || '',
           priority: this.todo.priority,
           dueDate: this.todo.dueDate ? this.formatDateForInput(this.todo.dueDate) : '',
+          startDateTime: this.todo.startDateTime ? this.formatDateForInput(this.todo.startDateTime) : '',
+          endDateTime: this.todo.endDateTime ? this.formatDateForInput(this.todo.endDateTime) : '',
           category: this.todo.category || '',
           completed: this.todo.completed,
           archived: this.todo.archived
@@ -170,6 +196,8 @@ export class TaskEditorComponent implements OnChanges {
       description: this.formData.description.trim() || undefined,
       priority: this.formData.priority,
       dueDate: this.formData.dueDate ? new Date(this.formData.dueDate) : undefined,
+      startDateTime: this.formData.startDateTime ? new Date(this.formData.startDateTime) : undefined,
+      endDateTime: this.formData.endDateTime ? new Date(this.formData.endDateTime) : undefined,
       category: this.formData.category.trim() || undefined,
       completed: this.formData.completed
     };
@@ -185,6 +213,8 @@ export class TaskEditorComponent implements OnChanges {
       description: '',
       priority: 'medium',
       dueDate: '',
+      startDateTime: '',
+      endDateTime: '',
       category: '',
       completed: false,
       archived: false
