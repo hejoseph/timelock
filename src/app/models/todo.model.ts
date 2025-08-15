@@ -8,6 +8,7 @@ export interface Todo {
   dueDate?: Date;
   startDateTime?: Date;
   endDateTime?: Date;
+  duration?: number; // Duration in minutes
   createdAt: Date;
   updatedAt: Date;
   category?: string;

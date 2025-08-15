@@ -41,9 +41,12 @@ import { TaskEditorComponent } from '../task-editor/task-editor.component';
           <div class="task-title" [class.completed]="todo.completed">
             {{ todo.title }}
           </div>
-          <div class="task-meta" *ngIf="todo.dueDate || todo.category">
+          <div class="task-meta" *ngIf="todo.dueDate || todo.category || todo.duration">
             <span class="due-date" *ngIf="todo.dueDate" [class.overdue]="isOverdue()">
               {{ formatDate(todo.dueDate) }}
+            </span>
+            <span class="duration" *ngIf="todo.duration" title="Estimated duration">
+              ⏰ {{ formatDuration(todo.duration) }}
             </span>
             <span class="category" *ngIf="todo.category">{{ todo.category }}</span>
           </div>
@@ -151,10 +154,7 @@ export class TodoItemComponent {
 
   onDelete(event: Event): void {
     event.stopPropagation();
-    // const taskType = this.isSubtask ? 'subtask' : 'task';
-    // if (confirm(`Are you sure you want to delete this ${taskType}?`)) {
     this.delete.emit(this.todo.id);
-    // }
   }
 
   onArchive(event: Event): void {
@@ -274,5 +274,20 @@ export class TodoItemComponent {
     }
     
     return `${todoDate.toLocaleDateString([], dateFormat)} at ${timeString}`;
+  }
+
+  formatDuration(minutes: number): string {
+    if (minutes < 60) {
+      return `${minutes}m`;
+    }
+    
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    
+    if (remainingMinutes === 0) {
+      return `${hours}h`;
+    }
+    
+    return `${hours}h ${remainingMinutes}m`;
   }
 }

@@ -71,7 +71,8 @@ import { Todo } from '../../models/todo.model';
                 class="form-input"
                 [(ngModel)]="formData.startDateTime"
                 name="startDateTime"
-                [min]="today">
+                [min]="today"
+                (change)="onStartDateTimeChange()">
             </div>
 
             <div class="form-group">
@@ -81,7 +82,35 @@ import { Todo } from '../../models/todo.model';
                 class="form-input"
                 [(ngModel)]="formData.endDateTime"
                 name="endDateTime"
-                [min]="formData.startDateTime || today">
+                [min]="formData.startDateTime || today"
+                (change)="onEndDateTimeChange()">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Duration</label>
+              <div class="duration-input-group">
+                <input type="number" 
+                       class="form-input duration-input"
+                       [(ngModel)]="formData.durationHours"
+                       name="durationHours"
+                       placeholder="0"
+                       min="0"
+                       max="23"
+                       (change)="onDurationChange()">
+                <span class="duration-label">hours</span>
+                <input type="number" 
+                       class="form-input duration-input"
+                       [(ngModel)]="formData.durationMinutes"
+                       name="durationMinutes"
+                       placeholder="0"
+                       min="0"
+                       max="59"
+                       (change)="onDurationChange()">
+                <span class="duration-label">minutes</span>
+              </div>
+              <small class="form-hint">Duration will auto-calculate from start/end times, or you can set it manually</small>
             </div>
           </div>
 
@@ -141,6 +170,8 @@ export class TaskEditorComponent implements OnChanges {
     dueDate: '',
     startDateTime: '',
     endDateTime: '',
+    durationHours: 0,
+    durationMinutes: 0,
     category: '',
     completed: false,
     archived: false
@@ -150,6 +181,9 @@ export class TaskEditorComponent implements OnChanges {
     if (changes['todo'] && changes['todo'].currentValue) {
       this.isEditing = true;
       if (this.todo) {
+        const durationHours = this.todo.duration ? Math.floor(this.todo.duration / 60) : 0;
+        const durationMinutes = this.todo.duration ? this.todo.duration % 60 : 0;
+        
         this.formData = {
           title: this.todo.title,
           description: this.todo.description || '',
@@ -157,6 +191,8 @@ export class TaskEditorComponent implements OnChanges {
           dueDate: this.todo.dueDate ? this.formatDateForInput(this.todo.dueDate) : '',
           startDateTime: this.todo.startDateTime ? this.formatDateForInput(this.todo.startDateTime) : '',
           endDateTime: this.todo.endDateTime ? this.formatDateForInput(this.todo.endDateTime) : '',
+          durationHours,
+          durationMinutes,
           category: this.todo.category || '',
           completed: this.todo.completed,
           archived: this.todo.archived
@@ -191,6 +227,8 @@ export class TaskEditorComponent implements OnChanges {
   onSubmit() {
     if (!this.formData.title.trim()) return;
 
+    const totalMinutes = (this.formData.durationHours || 0) * 60 + (this.formData.durationMinutes || 0);
+
     const todoData: Partial<Todo> = {
       title: this.formData.title.trim(),
       description: this.formData.description.trim() || undefined,
@@ -198,6 +236,7 @@ export class TaskEditorComponent implements OnChanges {
       dueDate: this.formData.dueDate ? new Date(this.formData.dueDate) : undefined,
       startDateTime: this.formData.startDateTime ? new Date(this.formData.startDateTime) : undefined,
       endDateTime: this.formData.endDateTime ? new Date(this.formData.endDateTime) : undefined,
+      duration: totalMinutes > 0 ? totalMinutes : undefined,
       category: this.formData.category.trim() || undefined,
       completed: this.formData.completed
     };
@@ -215,10 +254,49 @@ export class TaskEditorComponent implements OnChanges {
       dueDate: '',
       startDateTime: '',
       endDateTime: '',
+      durationHours: 0,
+      durationMinutes: 0,
       category: '',
       completed: false,
       archived: false
     };
+  }
+
+  onStartDateTimeChange(): void {
+    this.calculateDurationFromDates();
+  }
+
+  onEndDateTimeChange(): void {
+    this.calculateDurationFromDates();
+  }
+
+  onDurationChange(): void {
+    // When duration is manually changed, update end time if start time is set
+    if (this.formData.startDateTime && (this.formData.durationHours || this.formData.durationMinutes)) {
+      const startDate = new Date(this.formData.startDateTime);
+      const totalMinutes = (this.formData.durationHours || 0) * 60 + (this.formData.durationMinutes || 0);
+      const endDate = new Date(startDate.getTime() + totalMinutes * 60000);
+      
+      // Format for datetime-local input
+      const endDateTime = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000)
+        .toISOString().slice(0, 16);
+      this.formData.endDateTime = endDateTime;
+    }
+  }
+
+  private calculateDurationFromDates(): void {
+    if (this.formData.startDateTime && this.formData.endDateTime) {
+      const start = new Date(this.formData.startDateTime);
+      const end = new Date(this.formData.endDateTime);
+      
+      if (end > start) {
+        const diffMs = end.getTime() - start.getTime();
+        const totalMinutes = Math.floor(diffMs / (1000 * 60));
+        
+        this.formData.durationHours = Math.floor(totalMinutes / 60);
+        this.formData.durationMinutes = totalMinutes % 60;
+      }
+    }
   }
 
   private formatDateForInput(date: Date): string {
